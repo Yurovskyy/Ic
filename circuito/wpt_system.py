@@ -1,0 +1,95 @@
+# wpt_system.py
+"""
+Módulo para cálculos do circuito do sistema WPT.
+Referência: Seções 2 e 4 (Etapa 2.2) do artigo.
+"""
+import math
+from ..config import p_d, CONSTRAINTS, SECANT_METHOD_TOLERANCE, SECANT_METHOD_MAX_ITER
+from ..modelagem import calculate_resistances
+
+def calculate_system_parameters(individual, frequency_hz):
+    """
+    Calcula os parâmetros elétricos do sistema para uma dada frequência.
+    Baseado nas equações da Tabela 1 e Seção 2.
+    """
+    # Frequência angular
+    w = 2 * math.pi * frequency_hz
+    
+    # Calcula resistências para a frequência atual
+    R_p, R_s = calculate_resistances(individual, frequency_hz)
+    
+    # (Eq. 1) Calcula a resistência de carga equivalente RL
+    R_L = (8 / math.pi**2) * (individual.variables['V_s']**2 / p_d)
+    
+    # (Eqs. 5, 6) Capacitores de ressonância
+    C_p = 1 / (individual.L_p * w**2)
+    C_s = 1 / (individual.L_s * w**2)
+    
+    # (Eq. 4 simplificada para ressonância) Impedância total refletida
+    # ? devo ter que mudar por conta de que o script nao tinha as indutancias e resistencias, calculo elas por fora...
+    Z_reflected = (w * individual.M)**2 / (R_s + R_L)
+    # ?
+    Z_total = R_p + Z_reflected
+    
+    # Correntes (Ip, Is)
+    I_p = individual.variables['V_p'] / Z_total if Z_total > 0 else 0
+    # ? olhar table 1
+    I_s = (w * individual.M * I_p) / (R_s + R_L) if (R_s + R_L) > 0 else 0
+    
+    # Potência de saída (Eq. 8)
+    # ? faz sentido
+    power_out = R_L * I_s**2
+    
+    # Potência de entrada
+    # ?
+    power_in = power_out + (I_p**2 * R_p) + (I_s**2 * R_s)
+    
+    # Eficiência
+    efficiency = power_out / power_in if power_in > 0 else 0
+    
+    # (Eqs. 9, 10) Tensão nos capacitores
+    VC_p = I_p / (w * C_p) if C_p > 0 else 0
+    VC_s = I_s / (w * C_s) if C_s > 0 else 0
+    
+    return {
+        'power_out': power_out, 'efficiency': efficiency, 'R_p': R_p, 'R_s': R_s,
+        'I_p': I_p, 'I_s': I_s, 'VC_p': VC_p, 'VC_s': VC_s
+    }
+
+def secant_method_for_frequency(individual):
+    """
+    Implementa o método da secante para encontrar a frequência de operação.
+    Referência: Seção 4, Etapa 2.2 (Eqs. 40-47).
+    O objetivo é encontrar a frequência 'f' tal que a potência de saída seja 11 kW.
+    """
+    f_min, f_max = CONSTRAINTS['frequency_kHz']
+    f_k_minus_1 = f_min * 1000
+    f_k = f_max * 1000
+    
+    params_k_minus_1 = calculate_system_parameters(individual, f_k_minus_1)
+    delta_P_k_minus_1 = params_k_minus_1['power_out'] - p_d
+
+    for _ in range(SECANT_METHOD_MAX_ITER):
+        params_k = calculate_system_parameters(individual, f_k)
+        delta_P_k = params_k['power_out'] - p_d
+
+        if abs(delta_P_k) < SECANT_METHOD_TOLERANCE:
+            # Convergiu
+            return f_k, params_k
+
+        # (Eq. 47) - Fórmula da secante para a próxima frequência
+        denominator = delta_P_k - delta_P_k_minus_1
+        if abs(denominator) < 1e-9: # Evita divisão por zero
+            return None, None 
+
+        f_k_plus_1 = f_k - delta_P_k * (f_k - f_k_minus_1) / denominator
+        
+        # Atualiza as variáveis para a próxima iteração
+        f_k_minus_1, f_k = f_k, f_k_plus_1
+        delta_P_k_minus_1 = delta_P_k
+        
+        # Garante que a frequência permaneça nos limites
+        if not (CONSTRAINTS['frequency_kHz'][0] * 1000 <= f_k <= CONSTRAINTS['frequency_kHz'][1] * 1000):
+            return None, None
+
+    return None, None # Não convergiu
