@@ -3,41 +3,42 @@
 Arquivo de configuração para o otimizador WPT NSGA-II.
 Contém constantes baseadas no artigo 'Optimal design of a Low-Cost SAE JA2954 compliant WPT system'.
 """
-
 import numpy as np
 
 # ===========================================================================
 # Constantes Físicas e Materiais
 # ===========================================================================
-mu_0 = 4 * np.pi * 1e-7  # (μ0) Permeabilidade do vácuo [H/m]
-rho_cobre = 1.68e-8      # Resistividade do cobre (@ 20°C) [Ohm*m]
+
+Constantes_fisicas = {
+    "Mu_0" : 4 * np.pi * 1e-7, # (μ0) Permeabilidade do vácuo [H/m]
+    "Rho_Cobre" : 1.68e-8, # Resistividade do cobre (@ 20°C) [Ohm*m]
+};
 
 # ===========================================================================
 # Parâmetros Fixos de Projeto (Baseado na Tabela 2 do artigo)
 # ===========================================================================
 # Estes são os parâmetros definidos pelo padrão SAE J2954 para o caso de
 # uma bobina WPT3Z3 e não são modificados durante a otimização.
-p_d = 11000.0  # (PD) Potência de projeto [W]
 
+
+Parametros_fixos_projeto = {
+    "P_d" : 11000.0,  # (PD) Potência de projeto [W]
 # Dimensões geométricas das bobinas (para WPT3Z3)
-PRIMARY_COIL_DIMENSIONS = {
-    'a_p': 0.65,  # Lado 'a' da bobina primária [m]
-    'b_p': 0.5   # Lado 'b' da bobina primária [m]
-}
-SECONDARY_COIL_DIMENSIONS = {
-    'a_s': 0.38,  # Lado 'a' da bobina secundária [m]
-    'b_s': 0.38   # Lado 'b' da bobina secundária [m]
-}
-# A distância entre indutores (0.25m) é usada nos cálculos de indutância mútua.
-distancia_indutor = 0.25
-
+# As bobinas são retangulares. O lado a é o lado maior
+    "A_p" : 0.65, # Lado 'a' da bobina primária [m]
+    "B_p" : 0.5, # Lado 'b' da bobina primária [m]
+    "A_s" : 0.38, # Lado 'a' da bobina secundária [m]
+    "B_s" : 0.38, # Lado 'b' da bobina secundária [m]
+    "Distancia_bobinas" : 0.25 # A distância entre indutores (0.25m) é usada nos cálculos de indutância mútua.
+};
 
 # ===========================================================================
 # Limites das Variáveis de Otimização (Baseado na Tabela 3 do artigo)
 # ===========================================================================
 # Estas são as variáveis que o algoritmo NSGA-II irá ajustar para encontrar
 # a solução ótima. Cada variável tem um valor mínimo e máximo definido.
-VAR_LIMITS = {
+
+Limites_variaveis = {
     'S_p': (1, 80),      # (Sp) Seção do condutor primário [mm^2]
     'N_p': (1, 20),      # (Np) Número de espiras do primário
     'S_s': (1, 80),      # (Ss) Seção do condutor secundário [mm^2]
@@ -51,7 +52,8 @@ VAR_LIMITS = {
 # ===========================================================================
 # As soluções geradas pelo otimizador devem respeitar estas restrições
 # para serem consideradas válidas (viáveis).
-CONSTRAINTS = {
+
+Restricoes = {
     'frequency_kHz': (79.0, 90.0),      # Faixa de frequência permitida pela Norma
     'efficiency_min': 0.95,             # Eficiência mínima de 95%
     'V_capacitor_max_kV': 3.5,          # Tensão máxima nos capacitores [KV]
@@ -59,22 +61,30 @@ CONSTRAINTS = {
     # Outras restrições como estabilidade (Qp > ...) e distribuição de perdas
     # são implementadas diretamente nas funções de avaliação.
 }
-k_penalizacao = 2e9 # Constante de penalidade (K) para soluções que violam as restrições.
 
 # ===========================================================================
 # Parâmetros do Algoritmo Genético NSGA-II
 # ===========================================================================
-POPULATION_SIZE = 100
-MAX_GENERATIONS = 200
-CROSSOVER_PROBABILITY = 0.9
-MUTATION_PROBABILITY = 1.0 / len(VAR_LIMITS) # Probabilidade de mutação por variável
+
+Parametros_algoritmo = {
+    "Tamanho_populacao" : 100,
+    "Maximo_geracoes" : 200,
+    "Probabilidade_crossover" : 0.9,
+    "Probabilidade_mutacao" : 1.0 / len(Limites_variaveis), # Probabilidade de mutação por variável
+    "k_penalizacao" : 2e9 # Constante de penalidade (K) para soluções que violam as restrições.
+}
 
 # ===========================================================================
 # Parâmetros de Métodos Numéricos Auxiliares
 # ===========================================================================
 # Parâmetros para o Método da Secante (usado para encontrar a frequência correta)
-SECANT_METHOD_TOLERANCE = 1.0  # Tolerância de potência em Watts para convergência
-SECANT_METHOD_MAX_ITER = 50
+
+Parametros_numericos = {
+    "Eps_distance" : 1e-9, # Tolerância para evitar divisão por zero
+    "Tolerancia_secante" : 1.0,  # Tolerância de potência em Watts para convergência
+    "Maximo_iterador_secante" : 50,
+    "Numero_segmentos" : 200 # Número de segmentos para algoritmo numérico da induncia mutua
+}
 
 # ===========================================================================
 # Símbolos e Variáveis do Circuito (Documentação Centralizada)
@@ -111,16 +121,22 @@ k = None        # (k) Coeficiente de acoplamento [-]
 b = None        # (B) Densidade de fluxo magnético [T]
 
 # --- Geométricas e Físicas ---
+n = None #numero de espiras
 n_p = None      # (Np) Número de espiras do primário [-]
 n_s = None      # (Ns) Número de espiras do secundário [-]
 s_p = None      # (Sp) Seção do condutor primário [mm^2]
 s_s = None      # (Ss) Seção do condutor secundário [mm^2]
-a_p = PRIMARY_COIL_DIMENSIONS['a_p']   # Lado 'a' da bobina primária [m]
-b_p = PRIMARY_COIL_DIMENSIONS['b_p']   # Lado 'b' da bobina primária [m]
-a_s = SECONDARY_COIL_DIMENSIONS['a_s'] # Lado 'a' da bobina secundária [m]
-b_s = SECONDARY_COIL_DIMENSIONS['b_s'] # Lado 'b' da bobina secundária [m]
+a_p = Parametros_fixos_projeto['A_p']   # Lado 'a' da bobina primária [m]
+b_p = Parametros_fixos_projeto['B_p']   # Lado 'b' da bobina primária [m]
+a_s = Parametros_fixos_projeto['A_s'] # Lado 'a' da bobina secundária [m]
+b_s = Parametros_fixos_projeto['B_s'] # Lado 'b' da bobina secundária [m]
 d = None        # (d) Diâmetro [m]
+r = None        # Raio [m]
 d_0 = None      # (d0) Diâmetro do fio (strand) [mm]
+g = None # gap, espaçamento entre condutores [m]
+s = None # lagura do condutor
+z = None #altura/espessura do condutor
+
 vol_cu_p = None   # (Volcup) Volume de cobre no primário [m^3]
 vol_cu_s = None   # (Volcus) Volume de cobre no secundário [m^3]
 dl_p = None     # (dlp) Elemento infinitesimal no contorno da bobina primária [m]

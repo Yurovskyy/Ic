@@ -1,18 +1,15 @@
-# litz_wire_analyzer.py
-# Implementação do modelo de perdas em fio Litz de F. Tourkhani e P. Viarouge.
-# Referência: "Accurate Analytical Model of Winding Losses in Round Litz Wire Windings"
-# IEEE TRANSACTIONS ON MAGNETICS, VOL. 37, NO. 1, JANUARY 2001
-# -- Funções adicionadas para modelagem de sistemas IPT --
-
 import numpy as np
 from scipy.special import kelvin
-from ..config import mu_0, rho_cobre
+try:
+    from ..config import Constantes_fisicas
+except ImportError:
+    # Suporte a execução direta do arquivo (sem pacote pai)
+    import os, sys
+    sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+    from config import Constantes_fisicas
 
-# --- Constantes Físicas ---
-mu_0 = mu_0  # Permeabilidade do vácuo (H/m)
-rho_cobre = rho_cobre     # Resistividade do cobre (@ 20°C) (Ohm*m)
 
-def calculate_skin_depth(resistivity: float, frequency: float, mu: float = mu_0) -> float:
+def calculate_skin_depth(resistivity: float, frequency: float, mu: float = Constantes_fisicas["Mu_0"]) -> float:
     """
     Calcula a profundidade de penetração (skin depth) para um condutor.
     
@@ -88,7 +85,7 @@ def calculate_Kd(zeta: float, N_0: int, m: int, beta: float, use_approx: bool = 
 
 # --- NOVAS FUNÇÕES PARA MODELAGEM DE SISTEMAS IPT ---
 
-def calculate_rdc_per_length(N_0: int, d_o: float, resistivity: float = rho_cobre) -> float:
+def calculate_rdc_per_length(N_0: int, d_o: float, resistivity: float = Constantes_fisicas["Rho_Cobre"]) -> float:
     """
     Calcula a resistência DC por unidade de comprimento (Ohm/m) para um condutor Litz.
     
@@ -122,7 +119,7 @@ def calculate_r_skin_per_length(zeta: float, r_dc_per_length: float) -> float:
     # Vamos usar a fórmula da imagem fornecida: R_skin = ψ1(ξ)Rdc
     return psi1 * r_dc_per_length
 
-def calculate_r_prox_per_length(zeta: float, skin_depth: float, H: float, I: float, resistivity: float = rho_cobre) -> float:
+def calculate_r_prox_per_length(zeta: float, skin_depth: float, H: float, I: float, resistivity: float = Constantes_fisicas["Rho_Cobre"]) -> float:
     """
     Calcula a componente de resistência do efeito de proximidade (R_prox) por unidade de comprimento.
     Baseado na Equação (22).
@@ -151,29 +148,29 @@ def calculate_r_prox_per_length(zeta: float, skin_depth: float, H: float, I: flo
     return (numerator / denominator) * psi2
 
 def calculate_r_total(
-    N_0: int, d_o: float, frequency: float, H: float, I: float, resistivity: float = rho_cobre
+    n: int, d_0: float, f: float, h: float, i: float, rho: float = Constantes_fisicas["Rho_Cobre"]
 ) -> dict:
     """
     Calcula a resistência total por unidade de comprimento para um condutor Litz em um sistema IPT.
-    Soma R_skin e R_prox, conforme a Equação (19).
+    Soma R_skin e R_prox.
 
     Args:
-        N_0 (int): Número de filamentos no condutor.
-        d_o (float): Diâmetro de um filamento (m).
-        frequency (float): Frequência de operação (Hz).
-        H (float): Amplitude do campo magnético (A/m).
-        I (float): Amplitude da corrente no condutor (A).
-        resistivity (float): Resistividade do material (Ohm*m).
+        n (int): Número de filamentos no condutor.
+        d_o (float): Diâmetro de um filamento [m].
+        f (float): Frequência de operação [Hz].
+        h (float): Amplitude do campo magnético [A/m].
+        i (float): Amplitude da corrente no condutor [A].
+        rho (float): Resistividade do material [Ohm*m].
 
     Returns:
-        dict: Um dicionário contendo R_dc, R_skin, R_prox, e a resistência total R_t (Ohm/m).
+        dict: Um dicionário contendo R_dc, R_skin, R_prox, e a resistência total R_t [Ohm/m].
     """
-    skin_depth = calculate_skin_depth(resistivity, frequency)
-    zeta = d_o / skin_depth
+    skin_depth = calculate_skin_depth(rho, f)
+    zeta = d_0 / skin_depth
     
-    r_dc = calculate_rdc_per_length(N_0, d_o, resistivity)
+    r_dc = calculate_rdc_per_length(n, d_0, rho)
     r_skin = calculate_r_skin_per_length(zeta, r_dc)
-    r_prox = calculate_r_prox_per_length(zeta, skin_depth, H, I, resistivity)
+    r_prox = calculate_r_prox_per_length(zeta, skin_depth, H, I, rho)
     
     r_total = r_skin + r_prox
     
@@ -207,9 +204,9 @@ if __name__ == '__main__':
 
     # Calcular as resistências por metro
     resistances = calculate_r_total(
-        N_0=N_0_ipt,
-        d_o=d_o_ipt,
-        frequency=frequency_ipt,
+        n=N_0_ipt,
+        d_0=d_o_ipt,
+        f=frequency_ipt,
         H=H_ipt,
         I=I_ipt
     )

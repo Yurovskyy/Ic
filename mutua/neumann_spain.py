@@ -1,39 +1,35 @@
 import numpy as np
 from scipy.special import ellipk, ellipe # Para as integrais elípticas
-import math
-from ..config import mu_0
+try:
+    from ..config import Constantes_fisicas, Parametros_numericos
+except ImportError:
+    # Suporte a execução direta do arquivo (sem pacote pai)
+    import os, sys
+    sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+    from config import Constantes_fisicas, Parametros_numericos
 
-# ==============================================================================
-# CONSTANTES DE MÓDULO
-# ==============================================================================
-mu_0 = mu_0  # Permeabilidade do vácuo (H/m)
-EPS_DISTANCE = 1e-9       # Tolerância para evitar divisão por zero em distâncias
 
-# ==============================================================================
-# 1. IMPLEMENTAÇÃO DE REFERÊNCIA (FÓRMULA ANALÍTICA EXATA)
-# ==============================================================================
-
-def calculate_M_analytical_circular(radius1: float, radius2: float, distance: float) -> float:
+def calculate_M_analytical_circular(r_a: float, r_b: float, distancia_bobinas: float) -> float:
     """
     Calcula a indutância mútua entre duas espiras circulares coaxiais
     usando a fórmula analítica exata com integrais elípticas.
 
     Args:
-        radius1 (float): Raio da primeira espira (a), em metros.
-        radius2 (float): Raio da segunda espira (b), em metros.
-        distance (float): Distância axial entre as espiras (d), em metros.
+        r_a (float): Raio da primeira espira (a) [m]
+        r_b (float): Raio da segunda espira (b) [m]
+        distancia_bobina (float): Distância axial entre as espiras (d) [m]
 
     Returns:
-        float: A indutância mútua (M) em Henries.
+        m (float): A indutância mútua [H].
     """
-    if distance == 0 and radius1 == radius2:
+    if distancia_bobinas == 0 and r_a == r_b:
         # Caso especial: autoindutância de uma espira fina (tende ao infinito), não Mútua.
         # Mas para M, se d=0, o campo é no plano.
         # A fórmula diverge se os fios se tocam. Retorna um valor simbólico.
         return float('inf')
         
     # Parâmetro k^2 da fórmula
-    k_squared = (4 * radius1 * radius2) / ((radius1 + radius2)**2 + distance**2)
+    k_squared = (4 * r_a * r_b) / ((r_a + r_b)**2 + distancia_bobinas**2)
     
     # k é a raiz quadrada do módulo para as funções elípticas
     k = np.sqrt(k_squared)
@@ -46,9 +42,9 @@ def calculate_M_analytical_circular(radius1: float, radius2: float, distance: fl
     term1 = (2 / k - k) * K_k
     term2 = (2 / k) * E_k
     
-    M = mu_0 * np.sqrt(radius1 * radius2) * (term1 - term2)
+    m = Constantes_fisicas["Mu_0"] * np.sqrt(r_a * r_b) * (term1 - term2)
     
-    return M
+    return m
 
 # ==============================================================================
 # 2. IMPLEMENTAÇÃO NUMÉRICA (MÉTODO USADO NO SEU CÓDIGO, ADAPTADO)
@@ -77,14 +73,23 @@ def get_segment_vectors_and_midpoints(loop_points: np.ndarray) -> tuple[np.ndarr
         segment_midpoints.append(midpoint)
     return np.array(segment_vectors), np.array(segment_midpoints)
 
-def calculate_M_numerical_circular(radius1: float, radius2: float, distance: float, num_segments: int) -> float:
+def calculate_M_numerical_circular(r_a: float, r_b: float, distancia_bobina: float, numero_segmentos: int) -> float:
     """
     Calcula a indutância mútua entre duas espiras circulares coaxiais
     usando a aproximação numérica da fórmula de Neumann.
+
+    Args:
+        r_a (float): Raio da primeira espira (a) [m]
+        r_b (float): Raio da segunda espira (b) [m]
+        distancia_bobina (float): Distância axial entre as espiras (d) [m]
+        numero_segmentos (int): Número de segmentos para o loop circular iterar
+
+    Returns:
+        m (float): A indutância mútua [H].
     """
     # Cria as geometrias das duas espiras
-    points1 = create_circular_loop_points(radius1, num_segments, center_z=0.0)
-    points2 = create_circular_loop_points(radius2, num_segments, center_z=distance)
+    points1 = create_circular_loop_points(r_a, numero_segmentos, center_z=0.0)
+    points2 = create_circular_loop_points(r_b, numero_segmentos, center_z=distancia_bobina)
 
     # Discretiza as espiras em segmentos dl e pontos médios
     segments1, midpoints1 = get_segment_vectors_and_midpoints(points1)
@@ -92,16 +97,16 @@ def calculate_M_numerical_circular(radius1: float, radius2: float, distance: flo
     
     # Aplica a soma de Neumann
     M_numerical = 0.0
-    for i in range(num_segments):
+    for i in range(numero_segmentos):
         dl1, mid1 = segments1[i], midpoints1[i]
-        for j in range(num_segments):
+        for j in range(numero_segmentos):
             dl2, mid2 = segments2[j], midpoints2[j]
             r_vec = mid1 - mid2
             r = np.linalg.norm(r_vec)
-            if r > EPS_DISTANCE:
+            if r > Parametros_numericos["Eps_distance"]:
                 M_numerical += np.dot(dl1, dl2) / r
     
-    return (mu_0 / (4 * np.pi)) * M_numerical
+    return (Constantes_fisicas["Mu_0"] / (4 * np.pi)) * M_numerical
 
 # ==============================================================================
 # 3. COMPARAÇÃO E VALIDAÇÃO
@@ -126,7 +131,7 @@ if __name__ == '__main__':
     print(f"Resultado (Fórmula Analítica Exata): M = {M_analytical:.6e} H")
 
     # Calcula usando a implementação numérica
-    M_numerical = calculate_M_numerical_circular(r1, r2, d, n_segments)
+    M_numerical = calculate_M_numerical_circular(r1, r2, d, Parametros_numericos["Numero_segmentos"])
     print(f"Resultado (Implementação Numérica):   M = {M_numerical:.6e} H (com {n_segments} segmentos)")
     
     print("-" * 55)

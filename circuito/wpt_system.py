@@ -1,11 +1,17 @@
-# wpt_system.py
 """
 Módulo para cálculos do circuito do sistema WPT.
 Referência: Seções 2 e 4 (Etapa 2.2) do artigo.
 """
 import math
-from ..config import p_d, CONSTRAINTS, SECANT_METHOD_TOLERANCE, SECANT_METHOD_MAX_ITER
-from ..modelagem import calculate_resistances
+try:
+    from ..config import Parametros_fixos_projeto, Restricoes, Parametros_numericos
+    from ..modelagem import calculate_resistances
+except ImportError:
+    # Suporte a execução direta do arquivo (sem pacote pai)
+    import os, sys
+    sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+    from config import Parametros_fixos_projeto, Restricoes, Parametros_numericos
+    from modelagem import calculate_resistances
 
 def calculate_system_parameters(individual, frequency_hz):
     """
@@ -19,7 +25,7 @@ def calculate_system_parameters(individual, frequency_hz):
     R_p, R_s = calculate_resistances(individual, frequency_hz)
     
     # (Eq. 1) Calcula a resistência de carga equivalente RL
-    R_L = (8 / math.pi**2) * (individual.variables['V_s']**2 / p_d)
+    R_L = (8 / math.pi**2) * (individual.variables['V_s']**2 / Parametros_fixos_projeto["P_d"])
     
     # (Eqs. 5, 6) Capacitores de ressonância
     C_p = 1 / (individual.L_p * w**2)
@@ -62,18 +68,18 @@ def secant_method_for_frequency(individual):
     Referência: Seção 4, Etapa 2.2 (Eqs. 40-47).
     O objetivo é encontrar a frequência 'f' tal que a potência de saída seja 11 kW.
     """
-    f_min, f_max = CONSTRAINTS['frequency_kHz']
+    f_min, f_max = Restricoes['frequency_kHz']
     f_k_minus_1 = f_min * 1000
     f_k = f_max * 1000
     
     params_k_minus_1 = calculate_system_parameters(individual, f_k_minus_1)
-    delta_P_k_minus_1 = params_k_minus_1['power_out'] - p_d
+    delta_P_k_minus_1 = params_k_minus_1['power_out'] - Parametros_fixos_projeto["P_d"]
 
-    for _ in range(SECANT_METHOD_MAX_ITER):
+    for _ in range(Parametros_numericos["Maximo_iterador_secante"]):
         params_k = calculate_system_parameters(individual, f_k)
-        delta_P_k = params_k['power_out'] - p_d
+        delta_P_k = params_k['power_out'] - Parametros_fixos_projeto["P_d"]
 
-        if abs(delta_P_k) < SECANT_METHOD_TOLERANCE:
+        if abs(delta_P_k) < Parametros_numericos["Tolerancia_secante"]:
             # Convergiu
             return f_k, params_k
 
@@ -89,7 +95,7 @@ def secant_method_for_frequency(individual):
         delta_P_k_minus_1 = delta_P_k
         
         # Garante que a frequência permaneça nos limites
-        if not (CONSTRAINTS['frequency_kHz'][0] * 1000 <= f_k <= CONSTRAINTS['frequency_kHz'][1] * 1000):
+        if not (Restricoes['frequency_kHz'][0] * 1000 <= f_k <= Restricoes['frequency_kHz'][1] * 1000):
             return None, None
 
     return None, None # Não convergiu

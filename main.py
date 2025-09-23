@@ -14,9 +14,9 @@ from pymoo.optimize import minimize
 import matplotlib.pyplot as plt
 
 # Importa as constantes e as funções de modelagem dos arquivos anteriores
-from .config import *
-from .modelagem import calculate_inductances
-from .circuito.wpt_system import secant_method_for_frequency
+from config import Limites_variaveis, Restricoes, Parametros_algoritmo, Parametros_fixos_projeto
+from modelagem import calculate_inductances
+from circuito.wpt_system import secant_method_for_frequency
 
 # --- Definição do Problema para Pymoo ---
 class WPTProblem(Problem):
@@ -29,8 +29,8 @@ class WPTProblem(Problem):
         self.var_keys = ['S_p', 'N_p', 'S_s', 'N_s', 'V_p', 'V_s']
         
         # Extrai os limites inferiores (xl) e superiores (xu) do arquivo de configuração
-        xl = np.array([VAR_LIMITS[key][0] for key in self.var_keys])
-        xu = np.array([VAR_LIMITS[key][1] for key in self.var_keys])
+        xl = np.array([Limites_variaveis[key][0] for key in self.var_keys])
+        xu = np.array([Limites_variaveis[key][1] for key in self.var_keys])
 
         super().__init__(
             n_var=len(self.var_keys),     # Número de variáveis de decisão
@@ -76,8 +76,8 @@ class WPTProblem(Problem):
             
             # (Eq. 24, 25) Cálculo dos volumes de cobre (Funções Objetivo)
             # ?
-            len_p = 2 * (PRIMARY_COIL_DIMENSIONS['a_p'] + PRIMARY_COIL_DIMENSIONS['b_p']) * variables['N_p']
-            len_s = 2 * (SECONDARY_COIL_DIMENSIONS['a_s'] + SECONDARY_COIL_DIMENSIONS['b_s']) * variables['N_s']
+            len_p = 2 * (Parametros_fixos_projeto['A_p'] + Parametros_fixos_projeto['B_p']) * variables['N_p']
+            len_s = 2 * (Parametros_fixos_projeto['A_s'] + Parametros_fixos_projeto['B_s']) * variables['N_s']
             vol_cu_p = variables['S_p'] * len_p
             vol_cu_s = variables['S_s'] * len_s
             
@@ -88,27 +88,27 @@ class WPTProblem(Problem):
             # Referência: Tabela 8 do artigo
             
             # Restrição 1: Frequência Mínima (79 - f_kHz <= 0)
-            g[i, 0] = CONSTRAINTS['frequency_kHz'][0] - (frequency_hz / 1000.0)
+            g[i, 0] = Restricoes['frequency_kHz'][0] - (frequency_hz / 1000.0)
             
             # Restrição 2: Frequência Máxima (f_kHz - 90 <= 0)
-            g[i, 1] = (frequency_hz / 1000.0) - CONSTRAINTS['frequency_kHz'][1]
+            g[i, 1] = (frequency_hz / 1000.0) - Restricoes['frequency_kHz'][1]
             
             # Restrição 3: Eficiência Mínima (0.95 - eff <= 0)
-            g[i, 2] = CONSTRAINTS['efficiency_min'] - params['efficiency']
+            g[i, 2] = Restricoes['efficiency_min'] - params['efficiency']
             
             # Restrição 4: Tensão Máx. no Capacitor Primário (VC_p - 3.5kV <= 0)
-            g[i, 3] = params['VC_p'] - (CONSTRAINTS['V_capacitor_max_kV'] * 1000.0)
+            g[i, 3] = params['VC_p'] - (Restricoes['V_capacitor_max_kV'] * 1000.0)
             
             # Restrição 5: Tensão Máx. no Capacitor Secundário (VC_s - 3.5kV <= 0)
-            g[i, 4] = params['VC_s'] - (CONSTRAINTS['V_capacitor_max_kV'] * 1000.0)
+            g[i, 4] = params['VC_s'] - (Restricoes['V_capacitor_max_kV'] * 1000.0)
             
             # Restrição 6: Densidade de Corrente Máx. no Primário (J_p - 4 <= 0)
             current_density_p = params['I_p'] / variables['S_p']
-            g[i, 5] = current_density_p - CONSTRAINTS['current_density_max']
+            g[i, 5] = current_density_p - Restricoes['current_density_max']
             
             # Restrição 7: Densidade de Corrente Máx. no Secundário (J_s - 4 <= 0)
             current_density_s = params['I_s'] / variables['S_s']
-            g[i, 6] = current_density_s - CONSTRAINTS['current_density_max']
+            g[i, 6] = current_density_s - Restricoes['current_density_max']
 
         # Define os resultados no dicionário de saída do Pymoo
         out["F"] = f
@@ -122,15 +122,15 @@ if __name__ == '__main__':
     # 2. Instancia o algoritmo NSGA-II
     # Define os operadores de cruzamento e mutação conforme descrito no artigo
     algorithm = NSGA2(
-        pop_size=POPULATION_SIZE,
+        pop_size=Parametros_algoritmo["Tamanho_populacao"],
         sampling=FloatRandomSampling(),
-        crossover=SBX(prob=CROSSOVER_PROBABILITY, eta=15), # SBX é o crossover da Eq. 53-55
-        mutation=PM(prob=MUTATION_PROBABILITY, eta=20),    # PM é a mutação polinomial
+        crossover=SBX(prob=Parametros_algoritmo["Probabilidade_crossover"], eta=15), # SBX é o crossover da Eq. 53-55
+        mutation=PM(prob=Parametros_algoritmo["Probabilidade_mutacao"], eta=20),    # PM é a mutação polinomial
         eliminate_duplicates=True
     )
     
     # 3. Define o critério de parada (número de gerações)
-    termination = get_termination("n_gen", MAX_GENERATIONS)
+    termination = get_termination("n_gen", Parametros_algoritmo["Maximo_geracoes"])
     
     # 4. Executa a otimização
     print("Iniciando o algoritmo NSGA-II com Pymoo para otimização de WPT...")
