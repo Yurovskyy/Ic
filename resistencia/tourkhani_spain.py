@@ -170,7 +170,7 @@ def calculate_r_total(
     
     r_dc = calculate_rdc_per_length(n, d_0, rho)
     r_skin = calculate_r_skin_per_length(zeta, r_dc)
-    r_prox = calculate_r_prox_per_length(zeta, skin_depth, H, I, rho)
+    r_prox = calculate_r_prox_per_length(zeta, skin_depth, h, i, rho)
     
     r_total = r_skin + r_prox
     
@@ -207,8 +207,8 @@ if __name__ == '__main__':
         n=N_0_ipt,
         d_0=d_o_ipt,
         f=frequency_ipt,
-        H=H_ipt,
-        I=I_ipt
+        h=H_ipt,
+        i=I_ipt
     )
     
     r_dc_m = resistances["r_dc_per_m"]
