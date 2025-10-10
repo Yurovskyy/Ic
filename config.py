@@ -29,8 +29,12 @@ Parametros_fixos_projeto = {
     "B_p" : 0.5, # Lado 'b' da bobina primária [m]
     "A_s" : 0.38, # Lado 'a' da bobina secundária [m]
     "B_s" : 0.38, # Lado 'b' da bobina secundária [m]
-    "Distancia_bobinas" : 0.25 # A distância entre indutores (0.25m) é usada nos cálculos de indutância mútua.
+    "Distancia_bobinas" : 0.25, # A distância entre indutores (0.25m) é usada nos cálculos de indutância mútua.
+    "T_p" : 1.5, # Espaçamento entre espiras, separation between turns, isolamento [mm]
+    "T_s" : 1, # Esses espaçamentos não contam o diâmetro do fio
 };
+# Juntando as informações dos lados + a informação do diâmetro (extraída de S_p e S_s) +
+# a informação do número de espiras + o espaçamento entre as espiras, podemos calcular o comprimento de cada bobina
 
 # ===========================================================================
 # Limites das Variáveis de Otimização (Baseado na Tabela 3 do artigo)
@@ -124,6 +128,8 @@ b = None        # (B) Densidade de fluxo magnético [T]
 n = None #numero de espiras
 n_p = None      # (Np) Número de espiras do primário [-]
 n_s = None      # (Ns) Número de espiras do secundário [-]
+N_0p = None     # NUmero de filamentos do primario
+N_0s = None     # NUmero de filamentos do secundario 
 s_p = None      # (Sp) Seção do condutor primário [mm^2]
 s_s = None      # (Ss) Seção do condutor secundário [mm^2]
 a_p = Parametros_fixos_projeto['A_p']   # Lado 'a' da bobina primária [m]

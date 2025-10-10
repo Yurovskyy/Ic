@@ -1,11 +1,7 @@
 import numpy as np
-try:
-    from ..config import Constantes_fisicas
-except ImportError:
-    # Suporte a execução direta do arquivo (sem pacote pai)
-    import os, sys
-    sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-    from config import Constantes_fisicas
+import os, sys
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+from config import Constantes_fisicas
 
 def log_GMD2_func(k_idx, w, s, h, correction):
     # Usando kappa (κ) no lugar de k para evitar conflito com o índice do somatório
@@ -148,24 +144,24 @@ def calculate_rectangular_spiral_inductance(a, b, n, s, g, h):
 
     return L_total
 
-def calculate_ipt_coil_inductance_approx(d, n, g, s, z):
+def calculate_ipt_coil_inductance_approx(S, N, g):
     """
     Calcula a indutância aproximada de uma bobina circular para IPT,
     mapeando sua geometria para uma bobina quadrada equivalente.
 
     Args:
-        d (float): Diâmetro externo da bobina circular [m].
-        n (int): Número de espiras.
+        S (float): Seção do condutor bobina circular [mm]. (?)
+        N (int): Número de espiras. (?)
         g (float): Espaçamento entre os fios (gap) [m].
-        s (float): Largura do condutor [m].
-        z (float): Altura/espessura do condutor [m]
 
     Returns:
-        h float: A indutância aproximada [H].
+        L float: A indutância aproximada [H].
     """
+    # corigir esse cara para o que estava antes, pois a bobina continua sendo quadrada
+    # o artigo faz apenas aproximaçoes da quadrada para a circular, para facilitar as contas
 
-    # 1. Calcular o diâmetro do fio 'd' com a fórmula fornecida
-    d = 2 * np.sqrt((s * z) / np.pi)
+    # 1. Calcular o diâmetro do fio d com base na área da seção do condutor
+    d = np.sqrt((4*S)/np.pi);
 
     # 2. Fazer as aproximações de geometria
     # Bobina circular -> quadrada
@@ -177,9 +173,9 @@ def calculate_ipt_coil_inductance_approx(d, n, g, s, z):
     h = s                         # Altura do condutor
 
     # 3. Chamar a função principal com os parâmetros aproximados
-    inductance = calculate_rectangular_spiral_inductance(A, B, n, s, g, h)
+    L = calculate_rectangular_spiral_inductance(A, B, N, s, g, h)
 
-    return inductance
+    return L
 
 # --- Exemplo de Uso ---
 if __name__ == '__main__':

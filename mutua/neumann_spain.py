@@ -1,35 +1,34 @@
 import numpy as np
 from scipy.special import ellipk, ellipe # Para as integrais elípticas
-try:
-    from ..config import Constantes_fisicas, Parametros_numericos
-except ImportError:
-    # Suporte a execução direta do arquivo (sem pacote pai)
-    import os, sys
-    sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-    from config import Constantes_fisicas, Parametros_numericos
+import os, sys
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+from config import Constantes_fisicas, Parametros_numericos
 
 
-def calculate_M_analytical_circular(r_a: float, r_b: float, distancia_bobinas: float) -> float:
+def calculate_M_analytical_circular(S_p: float, S_s: float, distancia_bobinas: float) -> float:
     """
     Calcula a indutância mútua entre duas espiras circulares coaxiais
     usando a fórmula analítica exata com integrais elípticas.
 
     Args:
-        r_a (float): Raio da primeira espira (a) [m]
-        r_b (float): Raio da segunda espira (b) [m]
+        S_p (float): Seção do condutor primário da bobina circular  [mm] (?)
+        S_s (float): Seção do condutor secundário da bobina circular [mm] (?)
         distancia_bobina (float): Distância axial entre as espiras (d) [m]
 
     Returns:
         m (float): A indutância mútua [H].
     """
-    if distancia_bobinas == 0 and r_a == r_b:
+    r_p = np.sqrt(S_p/np.pi)
+    r_s = np.sqrt(S_s/np.pi)
+    
+    if distancia_bobinas == 0 and r_p == r_s:
         # Caso especial: autoindutância de uma espira fina (tende ao infinito), não Mútua.
         # Mas para M, se d=0, o campo é no plano.
         # A fórmula diverge se os fios se tocam. Retorna um valor simbólico.
         return float('inf')
         
     # Parâmetro k^2 da fórmula
-    k_squared = (4 * r_a * r_b) / ((r_a + r_b)**2 + distancia_bobinas**2)
+    k_squared = (4 * r_p * r_s) / ((r_p + r_s)**2 + distancia_bobinas**2)
     
     # k é a raiz quadrada do módulo para as funções elípticas
     k = np.sqrt(k_squared)
@@ -42,7 +41,7 @@ def calculate_M_analytical_circular(r_a: float, r_b: float, distancia_bobinas: f
     term1 = (2 / k - k) * K_k
     term2 = (2 / k) * E_k
     
-    m = Constantes_fisicas["Mu_0"] * np.sqrt(r_a * r_b) * (term1 - term2)
+    m = Constantes_fisicas["Mu_0"] * np.sqrt(r_p * r_s) * (term1 - term2)
     
     return m
 

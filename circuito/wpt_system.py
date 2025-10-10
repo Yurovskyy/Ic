@@ -3,15 +3,10 @@ Módulo para cálculos do circuito do sistema WPT.
 Referência: Seções 2 e 4 (Etapa 2.2) do artigo.
 """
 import math
-try:
-    from ..config import Parametros_fixos_projeto, Restricoes, Parametros_numericos
-    from ..modelagem import calculate_resistances
-except ImportError:
-    # Suporte a execução direta do arquivo (sem pacote pai)
-    import os, sys
-    sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-    from config import Parametros_fixos_projeto, Restricoes, Parametros_numericos
-    from modelagem import calculate_resistances
+import os, sys
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+from config import Parametros_fixos_projeto, Restricoes, Parametros_numericos
+from modelagem import calculate_resistances
 
 def calculate_system_parameters(individual, frequency_hz):
     """
@@ -22,6 +17,7 @@ def calculate_system_parameters(individual, frequency_hz):
     w = 2 * math.pi * frequency_hz
     
     # Calcula resistências para a frequência atual
+    # fazer essa interface
     R_p, R_s = calculate_resistances(individual, frequency_hz)
     
     # (Eq. 1) Calcula a resistência de carga equivalente RL
@@ -32,7 +28,7 @@ def calculate_system_parameters(individual, frequency_hz):
     C_s = 1 / (individual.L_s * w**2)
     
     # (Eq. 4 simplificada para ressonância) Impedância total refletida
-    # ? devo ter que mudar por conta de que o script nao tinha as indutancias e resistencias, calculo elas por fora...
+    # ? 
     Z_reflected = (w * individual.M)**2 / (R_s + R_L)
     # ?
     Z_total = R_p + Z_reflected
@@ -51,6 +47,7 @@ def calculate_system_parameters(individual, frequency_hz):
     power_in = power_out + (I_p**2 * R_p) + (I_s**2 * R_s)
     
     # Eficiência
+    # olhar tabela
     efficiency = power_out / power_in if power_in > 0 else 0
     
     # (Eqs. 9, 10) Tensão nos capacitores

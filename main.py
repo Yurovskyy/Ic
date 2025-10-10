@@ -75,7 +75,7 @@ class WPTProblem(Problem):
             # --- Etapa 2.3: Cálculo dos Objetivos e Restrições ---
             
             # (Eq. 24, 25) Cálculo dos volumes de cobre (Funções Objetivo)
-            # ?
+            # ? corrigir aki
             len_p = 2 * (Parametros_fixos_projeto['A_p'] + Parametros_fixos_projeto['B_p']) * variables['N_p']
             len_s = 2 * (Parametros_fixos_projeto['A_s'] + Parametros_fixos_projeto['B_s']) * variables['N_s']
             vol_cu_p = variables['S_p'] * len_p
