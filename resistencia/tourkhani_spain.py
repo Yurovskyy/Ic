@@ -35,7 +35,7 @@ def calculate_skin_depth(f: float) -> float:
         f (float): Frequência da corrente [Hz].
 
     Returns:
-        float: A profundidade de penetração (delta) [m].
+        delta (float): A profundidade de penetração [m].
     """
     if f <= 0:
         return float('inf')
@@ -101,19 +101,19 @@ def calculate_Kd(zeta: float, N_0: int, m: int, beta: float) -> float:
 
 # --- NOVAS FUNÇÕES PARA MODELAGEM DE SISTEMAS IPT ---
 
-def calculate_rdc_per_length(N: int, d: float) -> float:
+def calculate_rdc_per_length(N_0: int, d_0: float) -> float:
     """
     Calcula a resistência DC por unidade de comprimento (Ohm/m) para um condutor Litz.
     
     Args:
-        N (int): Número de filamentos (strands) no condutor.
-        d (float): Diâmetro de um único filamento [m].  
+        N_0 (int): Número de filamentos (strands) no condutor.
+        d_0 (float): Diâmetro do filamento [m].  
 
     Returns:
         float: A resistência DC por metro (R_dc) em Ohm/m.
     """
-    area_one_strand = np.pi * (d / 2)**2
-    total_area = N * area_one_strand
+    area_one_strand = np.pi * (d_0 / 2)**2
+    total_area = N_0 * area_one_strand
     return Constantes_fisicas["Rho_Cobre"] / total_area
 
 def calculate_r_skin_per_length(zeta: float, r_dc_per_length: float) -> float:
@@ -134,7 +134,7 @@ def calculate_r_skin_per_length(zeta: float, r_dc_per_length: float) -> float:
     # Vamos usar a fórmula da imagem fornecida: R_skin = ψ1(ξ)Rdc
     return psi1 * r_dc_per_length
 
-def calculate_r_prox_per_length(zeta: float, skin_depth: float, H: float, I: float) -> float:
+def calculate_r_prox_per_length(zeta: float, skin_depth: float, d:float) -> float:
     """
     Calcula a componente de resistência do efeito de proximidade (R_prox) por unidade de comprimento.
     Baseado na Equação (22).
@@ -145,46 +145,49 @@ def calculate_r_prox_per_length(zeta: float, skin_depth: float, H: float, I: flo
     Args:
         zeta (float): Diâmetro normalizado do filamento (d_o / delta).
         skin_depth (float): Profundidade de penetração (delta) (m).
-        H (float): Amplitude do campo magnético externo (A/m).
-        I (float): Amplitude da corrente total no condutor Litz (A).
+        d (float): Diâmetro do condutor [m].
 
     Returns:
         float: A resistência R_prox por metro em Ohm/m.
     """
-    if I == 0:
-        return 0.0
         
     psi2 = psi2_zeta_actual(zeta)
     
-    numerator = -2 * np.sqrt(2) * np.pi * Constantes_fisicas["Rho_Cobre"] * H**2
-    denominator = skin_depth * I**2
+    numerator = -2 * np.sqrt(2) * np.pi * Constantes_fisicas["Rho_Cobre"] * Constantes_fisicas["Mu_0"]**2
+    denominator = skin_depth * d**2
     
     return (numerator / denominator) * psi2
 
 def calculate_r_total(
-    N: int, D: float, f: float, h: float, i: float) -> dict:
+    S: float, f: float, d_0: float) -> dict:
     """
     Calcula a resistência total por unidade de comprimento para um condutor Litz em um sistema IPT.
     Soma R_skin e R_prox.
 
     Args:
-        N (int): Número de espiras no condutor. (?)
-        D (float): Diâmetro de um filamento [m]. (?) (Obtido via sqrt(S)/2)
+        S (float): Seção do condutor [mm^2]. (?)
         f (float): Frequência de operação [Hz]. (?)
+        d_0 (float): Diâmetro do filamento [m] 
         
         # Substituir para nao precisar usar esses 2 parâmetros
         h (float): Amplitude do campo magnético [A/m].
         i (float): Amplitude da corrente no condutor [A].
+        
+        PS: em um dos outros artigos, o diametro do fio do filamento é 0,1 [mm] = 0,0001 [m]
 
     Returns:
         dict: Um dicionário contendo R_dc, R_skin, R_prox, e a resistência total R_t [Ohm/m].
     """
-    skin_depth = calculate_skin_depth(f)
-    zeta = D / skin_depth
     
-    r_dc = calculate_rdc_per_length(N, D)
+    D = np.sqrt(S) # Diâmetro do condutor
+    N_0 = D / (d_0 *2) # Numero de filamentos
+    
+    skin_depth = calculate_skin_depth(f)
+    zeta = d_0 / skin_depth
+    
+    r_dc = calculate_rdc_per_length(N_0, d_0)
     r_skin = calculate_r_skin_per_length(zeta, r_dc)
-    r_prox = calculate_r_prox_per_length(zeta, skin_depth, h, i)
+    r_prox = calculate_r_prox_per_length(zeta, skin_depth, D)
     
     r_total = r_skin + r_prox
     
@@ -201,28 +204,22 @@ if __name__ == '__main__':
     print("--- Análise de Perdas em Enrolamento de Fio Litz ---")
     
     # --- Parâmetros de Entrada para o Exemplo IPT ---
-    # Valores típicos para um sistema de carregamento sem fio de veículos (SAE J2954 WPT1)
     frequency_ipt = 85e3      # Frequência de operação: 85 kHz
-    d_o_ipt = 100e-6          # Diâmetro do filamento: 100 um (aprox. 38 AWG)
-    N_0_ipt = 500             # Número de filamentos
-    I_ipt = 30                # Corrente RMS na bobina: 30 A
-    H_ipt = 600               # Campo magnético estimado na região do enrolamento: 600 A/m
+    # https://www.rapidtables.org/pt/calc/wire/awg-to-mm.html
+    d_0 = 0.0001          # Diâmetro do filamento
+    N_0 = 500             # Número de filamentos
     
     print("\n--- Exemplo de Cálculo para Sistema IPT ---")
     print(f"Parâmetros de Entrada:")
     print(f"  Frequência (f): {frequency_ipt / 1e3:.1f} kHz")
-    print(f"  Diâmetro do Filamento (d_o): {d_o_ipt * 1e6:.0f} um")
-    print(f"  Número de Filamentos (N_0): {N_0_ipt}")
-    print(f"  Corrente (I): {I_ipt} A")
-    print(f"  Campo Magnético (H): {H_ipt} A/m")
-
+    print(f"  Diâmetro do Filamento (d_o): {d_0:.9f} mm")
+    print(f"  Número de Filamentos (N_0): {N_0}")
+    
     # Calcular as resistências por metro
     resistances = calculate_r_total(
-        n=N_0_ipt,
-        D=d_o_ipt,
+        S=(2*N_0*d_0)**2,
         f=frequency_ipt,
-        h=H_ipt,
-        i=I_ipt
+        d_0=d_0,
     )
     
     r_dc_m = resistances["r_dc_per_m"]

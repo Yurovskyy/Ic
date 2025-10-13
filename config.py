@@ -32,6 +32,8 @@ Parametros_fixos_projeto = {
     "Distancia_bobinas" : 0.25, # A distância entre indutores (0.25m) é usada nos cálculos de indutância mútua.
     "T_p" : 1.5, # Espaçamento entre espiras, separation between turns, isolamento [mm]
     "T_s" : 1, # Esses espaçamentos não contam o diâmetro do fio
+    "d_0" : 0.0001 # Diametro do filamento(strand) [m]
+    
 };
 # Juntando as informações dos lados + a informação do diâmetro (extraída de S_p e S_s) +
 # a informação do número de espiras + o espaçamento entre as espiras, podemos calcular o comprimento de cada bobina
@@ -138,7 +140,7 @@ a_s = Parametros_fixos_projeto['A_s'] # Lado 'a' da bobina secundária [m]
 b_s = Parametros_fixos_projeto['B_s'] # Lado 'b' da bobina secundária [m]
 d = None        # (d) Diâmetro [m]
 r = None        # Raio [m]
-d_0 = None      # (d0) Diâmetro do fio (strand) [mm]
+d_0 = None      # (d0) Diâmetro do filamento (strand) [mm]
 g = None # gap, espaçamento entre condutores [m]
 s = None # lagura do condutor
 z = None #altura/espessura do condutor
