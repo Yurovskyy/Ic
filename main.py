@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 
 # Importa as constantes e as funções de modelagem dos arquivos anteriores
 from config import Limites_variaveis, Restricoes, Parametros_algoritmo, Parametros_fixos_projeto
-from modelagem import calculate_inductances
+from modelagem import calculate_inductances, calculate_mutual_inductance
 from circuito.wpt_system import secant_method_for_frequency
 
 # --- Definição do Problema para Pymoo ---
@@ -63,7 +63,8 @@ class WPTProblem(Problem):
             # Etapa 2.1: Cálculo das indutâncias
             # Este objeto temporário facilita a passagem de parâmetros
             temp_individual = type('obj', (object,), {'variables': variables})()
-            temp_individual.L_p, temp_individual.L_s, temp_individual.M = calculate_inductances(temp_individual)
+            temp_individual.L_p, temp_individual.L_s = calculate_inductances(temp_individual,Parametros_fixos_projeto["g"])
+            temp_individual.M = calculate_mutual_inductance(temp_individual,Parametros_fixos_projeto["Distancia_bobinas"])
             
             # Etapa 2.2: Encontrar frequência de operação via método da secante
             frequency_hz, params = secant_method_for_frequency(temp_individual)
@@ -153,13 +154,13 @@ if __name__ == '__main__':
         pareto_solutions = res.X
         pareto_objectives = res.F
 
-        for i in range(len(pareto_solutions)):
-            print(f"\nSolução {i+1}:")
-            print(f"  - Objetivos (Vol_p, Vol_s): ({pareto_objectives[i, 0]:.4f}, {pareto_objectives[i, 1]:.4f})")
+        # for i in range(len(pareto_solutions)):
+        #     print(f"\nSolução {i+1}:")
+        #     print(f"  - Objetivos (Vol_p, Vol_s): ({pareto_objectives[i, 0]:.4f}, {pareto_objectives[i, 1]:.4f})")
             
-            solution_vars = {key: val for key, val in zip(problem.var_keys, pareto_solutions[i, :])}
-            for key, val in solution_vars.items():
-                print(f"  - {key}: {val:.2f}")
+        #     solution_vars = {key: val for key, val in zip(problem.var_keys, pareto_solutions[i, :])}
+        #     for key, val in solution_vars.items():
+        #         print(f"  - {key}: {val:.2f}")
 
         # 6. Visualização da Frente de Pareto
         plt.figure(figsize=(10, 6))

@@ -1,4 +1,5 @@
 import numpy as np
+import math
 import os, sys
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from config import Constantes_fisicas
@@ -70,7 +71,9 @@ def calculate_rectangular_spiral_inductance(a, b, n, s, g, h):
         a, b = b, a
 
     if n < 2:
-        raise ValueError("O número de espiras (N) deve ser 2 ou maior.")
+        # O número de espiras deve ser maior que 2
+        print("deu ruim 1")
+        return 1e-12
 
     # Parâmetros derivados
     w = s + g  # Passo do enrolamento (winding pitch) 
@@ -83,14 +86,26 @@ def calculate_rectangular_spiral_inductance(a, b, n, s, g, h):
     b = b - (n - 1) * w  # Equação (4)
 
     # --- Etapa 2: Verificação de Validade da Geometria ---
-    if (b - (n - 1) * w) <= 0: return 1e-12 
+    if (b - (n - 1) * w) <= 0:
+        print("deu ruim 2")
+        return 1e-12
     rho = ((n - 1) * w + s) / (b - (n - 1) * w)
-    if n == 2 and rho > 0.36001: return 1e-12
-    if 3 <= n <= 7 and rho > 0.52001: return 1e-12
-    if 8 <= n <= 12 and rho > 0.78001: return 1e-12
-    if 13 <= n <= 20 and rho > 0.86001: return 1e-12
-    if n >= 21 and rho > (n - 1) / (n + 1): return 1e-12
-
+    if n == 2 and rho > 0.36001: 
+        print("deu ruim 3")
+        return 1e-12
+    if 3 <= n <= 7 and rho > 0.52001: 
+        print("deu ruim 4")
+        return 1e-12
+    if 8 <= n <= 12 and rho > 0.78001: 
+        print("deu ruim 5")
+        return 1e-12
+    if 13 <= n <= 20 and rho > 0.86001: 
+        print("deu ruim 6")
+        return 1e-12
+    if n >= 21 and rho > (n - 1) / (n + 1): 
+        print("deu ruim 7")
+        return 1e-12
+    
     # --- 4.2. Expressões aproximadas para as autoindutâncias parciais ---
 
     # Aproximações para GMD (Geometric Mean Distance)
@@ -144,24 +159,22 @@ def calculate_rectangular_spiral_inductance(a, b, n, s, g, h):
 
     return L_total
 
-def calculate_ipt_coil_inductance_approx(S, N, g):
+def calculate_ipt_coil_inductance_approx(S,N,A,B,g):
     """
     Calcula a indutância aproximada de uma bobina circular para IPT,
     mapeando sua geometria para uma bobina quadrada equivalente.
 
     Args:
-        S (float): Seção do condutor bobina circular [mm]. (?)
+        S (float): Seção do condutor [mm^2]. (?)
         N (int): Número de espiras. (?)
+        A (float): Comprimento do lado externo mais longo [m].
+        B (float): Comprimento do lado externo mais curto [m].
         g (float): Espaçamento entre os fios (gap) [m].
 
     Returns:
         L float: A indutância aproximada [H].
     """
-    # corigir esse cara para o que estava antes, pois a bobina continua sendo quadrada
-    # o artigo faz apenas aproximaçoes da quadrada para a circular, para facilitar as contas
-
-    # 1. Calcular o diâmetro do fio d com base na área da seção do condutor
-    d = np.sqrt((4*S)/np.pi);
+    d = 2 * np.sqrt((A*B)/(np.pi))
 
     # 2. Fazer as aproximações de geometria
     # Bobina circular -> quadrada
@@ -169,9 +182,10 @@ def calculate_ipt_coil_inductance_approx(S, N, g):
     B = d
 
     # Fio circular -> quadrado com mesma área
-    s = (np.sqrt(np.pi) / 2) * d  # Largura do condutor
+    d_condutor = np.sqrt(S)
+    s = d_condutor                # Largura do condutor
     h = s                         # Altura do condutor
-
+    
     # 3. Chamar a função principal com os parâmetros aproximados
     L = calculate_rectangular_spiral_inductance(A, B, N, s, g, h)
 
@@ -179,49 +193,66 @@ def calculate_ipt_coil_inductance_approx(S, N, g):
 
 # --- Exemplo de Uso ---
 if __name__ == '__main__':
-     # --- PARTE 1: Verificação com os exemplos do Artigo (Tabela 3) ---
-    print("--- Validação da Implementação com Dados da Tabela 3 do Artigo ---")
+    #  # --- PARTE 1: Verificação com os exemplos do Artigo (Tabela 3) ---
+    # print("--- Validação da Implementação com Dados da Tabela 3 do Artigo ---")
 
-    # Parâmetros de entrada comuns a todos os testes da Tabela 3
-    A_artigo = 0.1      # m
-    B_artigo = 0.05     # m
-    w_artigo = 1e-3     # m (pitch)
-    s_artigo = 5e-4     # m
-    h_artigo = 35e-6    # m
+    # # Parâmetros de entrada comuns a todos os testes da Tabela 3
+    # A_artigo = 0.1      # m lado maior
+    # B_artigo = 0.05     # m lado menor
+    # w_artigo = 1e-3     # m pitch, distancia entre condutores incluindo expessura
+    # s_artigo = 5e-4     # m expessura do condutor (S?)
+    # h_artigo = 35e-6    # m altura do condutor
 
-    # A função precisa do gap 'g', não do pitch 'w'. g = w - s
-    g_artigo = w_artigo - s_artigo
+    # # A função precisa do gap 'g', não do pitch 'w'. g = w - s
+    # g_artigo = w_artigo - s_artigo # espaçamento entre condutores
 
-    # Dados da Tabela 3 para verificação [N, L_matlab (uH)]
-    testes_tabela3 = [
-        (2, 1.064),
-        (5, 4.785),
-        (10, 13.525),
-        (15, 22.624)
-    ]
+    # # Dados da Tabela 3 para verificação [N, L_matlab (uH)]
+    # testes_tabela3 = [
+    #     (2, 1.064),
+    #     (5, 4.785),
+    #     (10, 13.525),
+    #     (15, 22.624)
+    # ]
 
-    # Loop através dos testes para validação
-    for N_teste, L_matlab_uH in testes_tabela3:
-        # Chamar a implementação em Python
-        L_python_H = calculate_rectangular_spiral_inductance(
-            a=A_artigo,
-            b=B_artigo,
-            n=N_teste,
-            s=s_artigo,
-            g=g_artigo,
-            h=h_artigo,
-        )
+    # # Loop através dos testes para validação
+    # for N_teste, L_matlab_uH in testes_tabela3:
+    #     # Chamar a implementação em Python
+    #     L_python_H = calculate_rectangular_spiral_inductance(
+    #         a=A_artigo,
+    #         b=B_artigo,
+    #         n=N_teste,
+    #         s=s_artigo,
+    #         g=g_artigo,
+    #         h=h_artigo,
+    #     )
         
-        # Converter para uH
-        L_python_uH = L_python_H * 1e6
+    #     # Converter para uH
+    #     L_python_uH = L_python_H * 1e6
 
-        # Calcular o erro relativo entre a implementação Python e o resultado MATLAB do artigo
-        erro_relativo_percent = abs((L_python_uH - L_matlab_uH) / L_matlab_uH) * 100
+    #     # Calcular o erro relativo entre a implementação Python e o resultado MATLAB do artigo
+    #     erro_relativo_percent = abs((L_python_uH - L_matlab_uH) / L_matlab_uH) * 100
 
-        print(f"Para N = {N_teste}:")
-        print(f"  > Resultado do Artigo (MATLAB): {L_matlab_uH:.3f} uH")
-        print(f"  > Resultado deste Script (Python): {L_python_uH:.3f} uH")
-        print(f"  > Erro Relativo (Python vs MATLAB): {erro_relativo_percent:.4f}%")
-        print("")
+    #     print(f"Para N = {N_teste}:")
+    #     print(f"  > Resultado do Artigo (MATLAB): {L_matlab_uH:.3f} uH")
+    #     print(f"  > Resultado deste Script (Python): {L_python_uH:.3f} uH")
+    #     print(f"  > Erro Relativo (Python vs MATLAB): {erro_relativo_percent:.4f}%")
+    #     print("")
 
-    print("\n" + "="*60 + "\n")
+    # print("\n" + "="*60 + "\n")
+
+    A = 0.650       # m lado maior
+    B = 0.500       # m lado menor
+    # d = 2 * np.sqrt((A*B)/(np.pi))
+    T_d = 0.0015    # separação entre condutores (w)
+    N = 15
+    n_t = 280       # numero de strands
+    d_t = 0.0002    # diametro strand
+    
+    s = d_t * n_t# expessura
+    h = d_t # altura/largura
+    g = T_d - s # gap
+    
+    print(B - 2*(N-1)*T_d)
+    
+    resultado = calculate_rectangular_spiral_inductance(A,B,N,s,g,h)
+    print(f"resultado:{resultado * 1e6:.5f} uH")

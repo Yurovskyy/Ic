@@ -153,7 +153,7 @@ def calculate_r_prox_per_length(zeta: float, skin_depth: float, d:float) -> floa
         
     psi2 = psi2_zeta_actual(zeta)
     
-    numerator = -2 * np.sqrt(2) * np.pi * Constantes_fisicas["Rho_Cobre"] * Constantes_fisicas["Mu_0"]**2
+    numerator = - 2 * np.sqrt(2) * np.pi * Constantes_fisicas["Rho_Cobre"] * Constantes_fisicas["Mu_0"]**2
     denominator = skin_depth * d**2
     
     return (numerator / denominator) * psi2

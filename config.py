@@ -30,13 +30,13 @@ Parametros_fixos_projeto = {
     "A_s" : 0.38, # Lado 'a' da bobina secundária [m]
     "B_s" : 0.38, # Lado 'b' da bobina secundária [m]
     "Distancia_bobinas" : 0.25, # A distância entre indutores (0.25m) é usada nos cálculos de indutância mútua.
-    "T_p" : 1.5, # Espaçamento entre espiras, separation between turns, isolamento [mm]
-    "T_s" : 1, # Esses espaçamentos não contam o diâmetro do fio
-    "d_0" : 0.0001 # Diametro do filamento(strand) [m]
+    "n_t": 280, # Número de filamentos (strad)
+    "d_0" : 0.0002, # Diametro do filamento(strand) [m]
+    "T_dp" : 0.0015, # Gap, espaçamento entre condutores [m]
+    "t_DS" : 0.001,
+    "packing_factor": 0.5 # Paragrafo antes da seção 3
     
 };
-# Juntando as informações dos lados + a informação do diâmetro (extraída de S_p e S_s) +
-# a informação do número de espiras + o espaçamento entre as espiras, podemos calcular o comprimento de cada bobina
 
 # ===========================================================================
 # Limites das Variáveis de Otimização (Baseado na Tabela 3 do artigo)

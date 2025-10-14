@@ -16,10 +16,11 @@ def calculate_system_parameters(individual, frequency_hz):
     # Frequência angular
     w = 2 * math.pi * frequency_hz
     
-    # Calcula resistências para a frequência atual
-    # fazer essa interface
-    R_p, R_s = calculate_resistances(individual, frequency_hz)
+    # Número imaginário
+    j = 1j
     
+    # Calcula resistências para a frequência atual
+    R_p, R_s = calculate_resistances(individual, frequency_hz,Parametros_fixos_projeto["d_0"])
     # (Eq. 1) Calcula a resistência de carga equivalente RL
     R_L = (8 / math.pi**2) * (individual.variables['V_s']**2 / Parametros_fixos_projeto["P_d"])
     
@@ -27,32 +28,40 @@ def calculate_system_parameters(individual, frequency_hz):
     C_p = 1 / (individual.L_p * w**2)
     C_s = 1 / (individual.L_s * w**2)
     
-    # (Eq. 4 simplificada para ressonância) Impedância total refletida
-    # ? 
-    Z_reflected = (w * individual.M)**2 / (R_s + R_L)
-    # ?
-    Z_total = R_p + Z_reflected
+    # (Eq. 4 ) Impedância total refletida
+    # Não podemos assumir que já temos a impedância em ressonância
+    # O método da secante é pra encontrar o ponto de ressonância!
+    
+    # Impedância total do laço secundário (carga + bobina secundária)
+    Z_s_loop = (R_s + R_L) + j * (w * individual.L_s - 1 / (w * C_s))
+    
+    # Impedância refletida para o primário (será um número complexo)
+    if abs(Z_s_loop) < 1e-9: # Evita divisão por zero
+        Z_reflected = complex('inf')
+    else:
+        Z_reflected = (w * individual.M)**2 / Z_s_loop
+    
+    # Impedância total do laço primário (fonte + bobina primária + impedância refletida)
+    Z_total = R_p + j * (w * individual.L_p - 1 / (w * C_p)) + Z_reflected
     
     # Correntes (Ip, Is)
-    I_p = individual.variables['V_p'] / Z_total if Z_total > 0 else 0
-    # ? olhar table 1
-    I_s = (w * individual.M * I_p) / (R_s + R_L) if (R_s + R_L) > 0 else 0
+    I_p = individual.variables['V_p'] / Z_total
+    I_s = (j*w * individual.M * I_p) / Z_s_loop
+    
+    # Para cálculos de potência e eficiência, usamos a MAGNITUDE (abs())
+    I_p_magnitude = abs(I_p)
+    I_s_magnitude = abs(I_s)
     
     # Potência de saída (Eq. 8)
-    # ? faz sentido
-    power_out = R_L * I_s**2
-    
+    power_out = R_L * (I_s_magnitude**2)
     # Potência de entrada
-    # ?
-    power_in = power_out + (I_p**2 * R_p) + (I_s**2 * R_s)
-    
+    power_in = power_out + (I_p_magnitude**2 * R_p) + (I_s_magnitude**2 * R_s)
     # Eficiência
-    # olhar tabela
-    efficiency = power_out / power_in if power_in > 0 else 0
+    efficiency = power_out / power_in
     
     # (Eqs. 9, 10) Tensão nos capacitores
-    VC_p = I_p / (w * C_p) if C_p > 0 else 0
-    VC_s = I_s / (w * C_s) if C_s > 0 else 0
+    VC_p = I_p / (j*w * C_p)
+    VC_s = I_s / (j*w * C_s)
     
     return {
         'power_out': power_out, 'efficiency': efficiency, 'R_p': R_p, 'R_s': R_s,
@@ -62,7 +71,6 @@ def calculate_system_parameters(individual, frequency_hz):
 def secant_method_for_frequency(individual):
     """
     Implementa o método da secante para encontrar a frequência de operação.
-    Referência: Seção 4, Etapa 2.2 (Eqs. 40-47).
     O objetivo é encontrar a frequência 'f' tal que a potência de saída seja 11 kW.
     """
     f_min, f_max = Restricoes['frequency_kHz']
