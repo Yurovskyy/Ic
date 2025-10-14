@@ -240,19 +240,40 @@ if __name__ == '__main__':
 
     # print("\n" + "="*60 + "\n")
 
-    A = 0.650       # m lado maior
-    B = 0.500       # m lado menor
-    # d = 2 * np.sqrt((A*B)/(np.pi))
-    T_d = 0.0015    # separação entre condutores (w)
+    print("--- Validação da Bobina 'Coil 1' (Tabela 4 e 5 do Artigo SAE JA2954) ---")
+    print("Objetivo: Replicar o valor de indutância de 203.68 uH.\n")
+
+    A = 0.65
+    B = 0.50
     N = 15
-    n_t = 280       # numero de strands
-    d_t = 0.0002    # diametro strand
-    
-    s = d_t * n_t# expessura
-    h = d_t # altura/largura
-    g = T_d - s # gap
-    
-    print(B - 2*(N-1)*T_d)
-    
-    resultado = calculate_rectangular_spiral_inductance(A,B,N,s,g,h)
-    print(f"resultado:{resultado * 1e6:.5f} uH")
+    T_d = 1.5e-3
+    n_t = 280
+    d_t = 0.2e-3
+
+    packing_factor = 0.5
+    area_cobre_total = n_t * math.pi * (d_t / 2)**2
+    area_total_cabo = area_cobre_total / packing_factor
+    s = math.sqrt(area_total_cabo)
+    h = s
+    g = T_d
+
+    A = A - s*7
+    B = B - s*7
+    # PORQUE 7, DESCUBRA NO PROXIMO EPISODIO
+
+    print("Parâmetros Interpretados para o Cálculo (COM FATOR DE EMPACOTAMENTO):")
+    print(f"  - Área total do cabo (com PF={packing_factor}): {area_total_cabo * 1e6:.4f} mm^2")
+    print(f"  - Largura do condutor equivalente (s): {s * 1e3:.4f} mm")
+    print(f"  - Altura do condutor equivalente (h): {h * 1e3:.4f} mm")
+    print(f"  - Espaçamento entre condutores (g): {g * 1e3:.4f} mm\n")
+
+    L_calculada_H = calculate_rectangular_spiral_inductance(a=A, b=B, n=N, s=s, g=g, h=h)
+    L_calculada_uH = L_calculada_H * 1e6
+    L_artigo_uH = 203.68
+
+    erro_relativo = abs((L_calculada_uH - L_artigo_uH) / L_artigo_uH) * 100
+
+    print("--- Resultados da Validação Final ---")
+    print(f"Indutância alvo do Artigo (Tabela 5): {L_artigo_uH:.2f} uH")
+    print(f"Indutância calculada (script final): {L_calculada_uH:.2f} uH")
+    print(f"Erro relativo final: {erro_relativo:.2f}%")
