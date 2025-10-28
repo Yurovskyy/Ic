@@ -1,66 +1,65 @@
 import numpy as np
-from scipy.special import ellipk, ellipe # Para as integrais elípticas
+import math
 import os, sys
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-from config import Constantes_fisicas, Parametros_numericos
 
+# --- Constantes e Parâmetros (Definidos para o exemplo) ---
+class Constantes_fisicas:
+    Mu_0 = 4 * np.pi * 1e-7  # Permeabilidade do vácuo (H/m)
 
-def calculate_M_analytical_circular(S_p: float, S_s: float, distancia_bobinas: float) -> float:
+class Parametros_numericos:
+    Eps_distance = 1e-9 # Pequena distância para evitar divisão por zero
+
+# --- Funções Auxiliares (Modificadas/Novas) ---
+
+def create_rectangular_loop_points(width_a: float, height_b: float, center_z: float, segments_per_side: int) -> np.ndarray:
     """
-    Calcula a indutância mútua entre duas espiras circulares coaxiais
-    usando a fórmula analítica exata com integrais elípticas.
-
-    Args:
-        S_p (float): Seção do condutor primário da bobina circular  [mm] (?)
-        S_s (float): Seção do condutor secundário da bobina circular [mm] (?)
-        distancia_bobina (float): Distância axial entre as espiras (d) [m]
-
-    Returns:
-        m (float): A indutância mútua [H].
+    Cria os pontos que definem uma única espira retangular no plano xy.
     """
-    r_p = np.sqrt(S_p/np.pi)
-    r_s = np.sqrt(S_s/np.pi)
-    
-    if distancia_bobinas == 0 and r_p == r_s:
-        # Caso especial: autoindutância de uma espira fina (tende ao infinito), não Mútua.
-        # Mas para M, se d=0, o campo é no plano.
-        # A fórmula diverge se os fios se tocam. Retorna um valor simbólico.
-        return float('inf')
-        
-    # Parâmetro k^2 da fórmula
-    k_squared = (4 * r_p * r_s) / ((r_p + r_s)**2 + distancia_bobinas**2)
-    
-    # k é a raiz quadrada do módulo para as funções elípticas
-    k = np.sqrt(k_squared)
-
-    # K(k) e E(k) são as integrais elípticas completas
-    K_k = ellipk(k_squared)
-    E_k = ellipe(k_squared)
-    
-    # Aplica a fórmula completa
-    term1 = (2 / k - k) * K_k
-    term2 = (2 / k) * E_k
-    
-    m = Constantes_fisicas["Mu_0"] * np.sqrt(r_p * r_s) * (term1 - term2)
-    
-    return m
-
-# ==============================================================================
-# 2. IMPLEMENTAÇÃO NUMÉRICA (MÉTODO USADO NO SEU CÓDIGO, ADAPTADO)
-# ==============================================================================
-
-# Funções auxiliares (as mesmas da primeira resposta, mas para espiras circulares)
-def create_circular_loop_points(radius: float, num_segments: int, center_z: float = 0.0) -> np.ndarray:
     points = []
-    delta_angle = 2 * np.pi / num_segments
-    for i in range(num_segments):
-        angle = i * delta_angle
-        x = radius * np.cos(angle)
-        y = radius * np.sin(angle)
-        points.append(np.array([x, y, center_z]))
+    half_a = width_a / 2.0
+    half_b = height_b / 2.0
+    
+    # Coordenadas dos 4 cantos
+    corners = [
+        np.array([-half_a, -half_b, center_z]), # Canto inferior esquerdo
+        np.array([ half_a, -half_b, center_z]), # Canto inferior direito
+        np.array([ half_a,  half_b, center_z]), # Canto superior direito
+        np.array([-half_a,  half_b, center_z])  # Canto superior esquerdo
+    ]
+
+    # Interpola pontos ao longo de cada lado
+    for i in range(4):
+        p1 = corners[i]
+        p2 = corners[(i + 1) % 4]
+        for j in range(segments_per_side):
+            point = p1 + (p2 - p1) * (j / segments_per_side)
+            points.append(point)
+            
     return np.array(points)
 
+def create_coil_geometry(width_a: float, height_b: float, num_turns: int, turn_spacing: float, segments_per_side: int, z_offset: float = 0.0) -> list:
+    """
+    Cria a geometria completa de uma bobina retangular com múltiplas espiras.
+    Cada espira é uma lista de pontos. A função retorna uma lista de espiras.
+    """
+    coil = []
+    # Assume que o enrolamento cresce para dentro a partir das dimensões externas
+    for n in range(num_turns):
+        # A cada volta, as dimensões diminuem
+        current_a = width_a - 2 * n * turn_spacing
+        current_b = height_b - 2 * n * turn_spacing
+        
+        # A posição z é a mesma para todas as espiras de uma bobina
+        loop_points = create_rectangular_loop_points(current_a, current_b, z_offset, segments_per_side)
+        coil.append(loop_points)
+        
+    return coil
+
 def get_segment_vectors_and_midpoints(loop_points: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Discretiza uma espira (circular ou retangular) em vetores de segmento (dl) 
+    e seus pontos médios.
+    """
     num_points = len(loop_points)
     segment_vectors, segment_midpoints = [], []
     for i in range(num_points):
@@ -72,74 +71,105 @@ def get_segment_vectors_and_midpoints(loop_points: np.ndarray) -> tuple[np.ndarr
         segment_midpoints.append(midpoint)
     return np.array(segment_vectors), np.array(segment_midpoints)
 
-def calculate_M_numerical_circular(r_a: float, r_b: float, distancia_bobina: float, numero_segmentos: int) -> float:
+
+def calculate_M_neumann_equation18(coil1_geometry: list, coil2_geometry: list) -> float:
     """
-    Calcula a indutância mútua entre duas espiras circulares coaxiais
-    usando a aproximação numérica da fórmula de Neumann.
-
-    Args:
-        r_a (float): Raio da primeira espira (a) [m]
-        r_b (float): Raio da segunda espira (b) [m]
-        distancia_bobina (float): Distância axial entre as espiras (d) [m]
-        numero_segmentos (int): Número de segmentos para o loop circular iterar
-
-    Returns:
-        m (float): A indutância mútua [H].
+    Calcula a indutância mútua total entre duas bobinas retangulares
+    implementando a Equação 18 do artigo.
     """
-    # Cria as geometrias das duas espiras
-    points1 = create_circular_loop_points(r_a, numero_segmentos, center_z=0.0)
-    points2 = create_circular_loop_points(r_b, numero_segmentos, center_z=distancia_bobina)
+    total_mutual_inductance = 0.0
+    num_loops_1 = len(coil1_geometry)
+    num_loops_2 = len(coil2_geometry)
 
-    # Discretiza as espiras em segmentos dl e pontos médios
-    segments1, midpoints1 = get_segment_vectors_and_midpoints(points1)
-    segments2, midpoints2 = get_segment_vectors_and_midpoints(points2)
-    
-    # Aplica a soma de Neumann
-    M_numerical = 0.0
-    for i in range(numero_segmentos):
-        dl1, mid1 = segments1[i], midpoints1[i]
-        for j in range(numero_segmentos):
-            dl2, mid2 = segments2[j], midpoints2[j]
-            r_vec = mid1 - mid2
-            r = np.linalg.norm(r_vec)
-            if r > Parametros_numericos["Eps_distance"]:
-                M_numerical += np.dot(dl1, dl2) / r
-    
-    return (Constantes_fisicas["Mu_0"] / (4 * np.pi)) * M_numerical
+    print(f"Calculando M mútua para {num_loops_1}x{num_loops_2} pares de espiras...")
+
+    # Laço duplo da Equação 18: Soma sobre i=1..N1 e j=1..N2
+    for i in range(num_loops_1):
+        # Discretiza a espira 'i' da bobina 1
+        segments1, midpoints1 = get_segment_vectors_and_midpoints(coil1_geometry[i])
+        
+        for j in range(num_loops_2):
+            # Discretiza a espira 'j' da bobina 2
+            segments2, midpoints2 = get_segment_vectors_and_midpoints(coil2_geometry[j])
+            
+            # Calcula M_ij para este par de espiras usando a soma de Neumann
+            M_ij = 0.0
+            for k in range(len(segments1)):
+                dl1, mid1 = segments1[k], midpoints1[k]
+                for l in range(len(segments2)):
+                    dl2, mid2 = segments2[l], midpoints2[l]
+                    
+                    r_vec = mid1 - mid2
+                    r = np.linalg.norm(r_vec)
+                    
+                    if r > Parametros_numericos.Eps_distance:
+                        M_ij += np.dot(dl1, dl2) / r
+            
+            # Adiciona a contribuição M_ij à indutância total
+            total_mutual_inductance += M_ij
+
+        # Feedback de progresso
+        print(f"  Progresso: Bobina 1, espira {i+1}/{num_loops_1} concluída.")
+
+    return (Constantes_fisicas.Mu_0 / (4 * np.pi)) * total_mutual_inductance
 
 # ==============================================================================
-# 3. COMPARAÇÃO E VALIDAÇÃO
+# 3. VALIDAÇÃO COM OS DADOS DO ARTIGO E EQUAÇÃO 18
 # ==============================================================================
 
 if __name__ == '__main__':
-    # --- Parâmetros do Teste ---
-    r1 = 0.1   # Raio da espira 1 (10 cm)
-    r2 = 0.15  # Raio da espira 2 (15 cm)
-    d = 0.05   # Distância entre as espiras (5 cm)
+    # --- Parâmetros extraídos da Tabela 4 do artigo ---
+    # Bobina 1 (Primária, maior, z=0)
+    Ap = 0.65      # [m]
+    Bp = 0.50      # [m]
+    Np = 15        # Número de espiras
+    T_dp = 1.5e-3  # Espaçamento entre espiras [m]
+    n_t = 280
+    d_t = 0.2e-3
+
+    packing_factor = 0.5
+    area_cobre_total = n_t * math.pi * (d_t / 2)**2
+    area_total_cabo = area_cobre_total / packing_factor
+    s = math.sqrt(area_total_cabo)
+
+    Ap = Ap - s*7
+    Bp = Bp - s*7
+
+    # Bobina 2 (Secundária, menor, em z=distancia)
+    As = 0.38      # [m]
+    Bs = 0.38      # [m]
+    Ns = 16        # Número de espiras
+    T_ds = 1.0e-3  # Espaçamento entre espiras [m]
+
+    As = As - s* (Ns/2 - 1)
+    Bs = Bs - s* (Ns/2 - 1)
     
-    # Parâmetro de precisão para o método numérico
-    # Quanto maior, mais preciso (e mais lento) será o cálculo.
-    n_segments = 400
+    # Distância axial entre as bobinas
+    distancia = 0.25 # [m]
 
-    print("--- Validação da Implementação da Indutância Mútua ---")
-    print(f"Parâmetros: Raio 1 = {r1} m, Raio 2 = {r2} m, Distância = {d} m")
-    print("-" * 55)
+    # Parâmetro de precisão para a discretização numérica
+    segmentos_por_lado = 20
 
-    # Calcula usando a fórmula analítica (gabarito)
-    M_analytical = calculate_M_analytical_circular(r1, r2, d)
-    print(f"Resultado (Fórmula Analítica Exata): M = {M_analytical:.6e} H")
+    print("--- Implementação da Equação 18 (Neumann para Múltiplas Espiras) ---")
 
-    # Calcula usando a implementação numérica
-    M_numerical = calculate_M_numerical_circular(r1, r2, d, Parametros_numericos["Numero_segmentos"])
-    print(f"Resultado (Implementação Numérica):   M = {M_numerical:.6e} H (com {n_segments} segmentos)")
+    # 1. Gerar a geometria 3D completa de cada bobina
+    print("Gerando geometria das bobinas...")
+    coil_p_geom = create_coil_geometry(Ap, Bp, Np, T_dp, segmentos_por_lado, z_offset=0.0)
+    coil_s_geom = create_coil_geometry(As, Bs, Ns, T_ds, segmentos_por_lado, z_offset=distancia)
     
-    print("-" * 55)
+    # 2. Calcular a indutância mútua total
+    M_total_eq18 = calculate_M_neumann_equation18(coil_p_geom, coil_s_geom)
+    
+    # Valor de referência do artigo (experimental)
+    M_paper_experimental = 19.5e-6 # Convertido de µH para H
+    M_paper_proposto = 19.67e-6 # Valor do método proposto no artigo
+
+    print("\n--- Resultados Finais ---")
+    print(f"Mútua total (Eq. 18, Numérico):       {M_total_eq18 * 1e6:.2f} µH")
+    print(f"Mútua do Artigo (Método Proposto):    {M_paper_proposto * 1e6:.2f} µH")
+    print(f"Mútua do Artigo (Experimental):       {M_paper_experimental * 1e6:.2f} µH")
+    print("-" * 50)
 
     # Calcula e exibe o erro percentual
-    error_percent = abs((M_numerical - M_analytical) / M_analytical) * 100
-    print(f"Erro Percentual: {error_percent:.4f}%")
-    
-    if error_percent < 0.1:
-        print("\nVALIDAÇÃO BEM-SUCEDIDA: O resultado numérico é extremamente próximo do analítico.")
-    else:
-        print("\nAVISO: O erro é maior que o esperado. Verifique os parâmetros.")
+    erro_percentual = abs((M_total_eq18 - M_paper_experimental) / M_paper_experimental) * 100
+    print(f"Erro percentual vs. Experimental: {erro_percentual:.2f}%")

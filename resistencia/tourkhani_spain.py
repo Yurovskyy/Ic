@@ -132,7 +132,7 @@ def calculate_r_skin_per_length(zeta: float, r_dc_per_length: float) -> float:
     # A fórmula R_skin = ψ1 * R_dc é uma simplificação. A fórmula completa derivada
     # do paper original é R_skin = (zeta / (4*sqrt(2))) * psi1 * R_dc.
     # Vamos usar a fórmula da imagem fornecida: R_skin = ψ1(ξ)Rdc
-    return psi1 * r_dc_per_length
+    return (zeta/4*np.sqrt(2)) * psi1 * r_dc_per_length
 
 def calculate_r_prox_per_length(zeta: float, skin_depth: float, d:float) -> float:
     """
@@ -206,7 +206,7 @@ if __name__ == '__main__':
     # --- Parâmetros de Entrada para o Exemplo IPT ---
     frequency_ipt = 85e3      # Frequência de operação: 85 kHz
     # https://www.rapidtables.org/pt/calc/wire/awg-to-mm.html
-    d_0 = 0.0001          # Diâmetro do filamento
+    d_0 = 0.0001          # Diâmetro do filamento (parametro fixo)
     N_0 = 500             # Número de filamentos
     
     print("\n--- Exemplo de Cálculo para Sistema IPT ---")
@@ -217,7 +217,7 @@ if __name__ == '__main__':
     
     # Calcular as resistências por metro
     resistances = calculate_r_total(
-        S=(2*N_0*d_0)**2,
+        S=(2*N_0*d_0)**2, # se pa isso aki ta errado
         f=frequency_ipt,
         d_0=d_0,
     )
