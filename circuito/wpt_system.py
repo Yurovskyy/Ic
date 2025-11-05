@@ -6,7 +6,7 @@ import math
 import os, sys
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from config import Parametros_fixos_projeto, Restricoes, Parametros_numericos
-from modelagem import calculate_resistances
+from modelagem_spain import calculate_resistances
 
 def calculate_system_parameters(individual, frequency_hz):
     """
