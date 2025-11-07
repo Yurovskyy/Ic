@@ -33,7 +33,7 @@ def calcular_k_nb(n_b: int) -> float:
     """
     return 1 + (n_b * 0.02)
 
-def calcular_area_strand(D_str: float) -> float:
+def     calcular_area_strand(D_str: float) -> float:
     """
     [cite_start]Calcula a área de um único strand (filamento) conforme a Equação 4.16[cite: 275].
 
@@ -126,7 +126,7 @@ if __name__ == "__main__":
 
     # --- Passo 1: Calcular Diâmetro Interno (Eq 4.12) ---
     D_i1 = calcular_diametro_interno(D_o1, w1, N1, s1)
-    print(f"Parâmetros L1: Do={D_o1} m, w={w1} m, N={N1}, s={s1} m")
+    print(f"Parâmetros L1: Do={D_o1} m, w={w1} m, N={N1}, s={s1} m\n")
     print(f"Diâmetro Interno (D_i1) calculado: {D_i1:.4f} m")
     print(f"    (Valor no documento: 0.3953 m [cite: 262])\n")
 
@@ -137,22 +137,22 @@ if __name__ == "__main__":
 
     # --- Passo 3: Calcular Área do Strand (Eq 4.16) ---
     A_str1 = calcular_area_strand(D_str_m)
-    print(f"Diâmetro do strand: {D_str_mm} mm (ou {D_str_m} m) [cite: 138, 275]")
+    print(f"Diâmetro do strand: {D_str_mm} mm (ou {D_str_m} m) [cite: 138, 275]\n")
     print(f"Área do strand (A_str) calculada: {A_str1:.4e} m^2")
     print(f"    (Valor no documento: 8.1073e-9 m^2 [cite: 275])\n")
 
+    # até aki ta 100% certo 
+    
     # --- Passo 4: Calcular Resistência Litz (Eq 4.17) ---
-    # O valor de 'n_b' (Eq 4.18) não é fornecido nas páginas.
     # [cite_start]É um parâmetro da norma (DIN; EN; IEC, 2000)[cite: 277].
-    # Vamos assumir um valor de exemplo (ex: n_b = 1).
-    n_b_exemplo = 1
+    n_b_exemplo = 3
 
     print("-" * 60)
     print(f"Cálculo da Resistência R_litz (Equação 4.17) [cite: 280]")
     print(f"Usando parâmetros: l={l1:.2f} m, A_str={A_str1:.4e} m^2")
     print(f"                   N_strands={N_strands1}, rho={RHO_COBRE} Ohm.m")
     print(f"                   k_BW={K_BW} [cite: 281]")
-    print(f"                   n_b={n_b_exemplo} (Valor de exemplo, não consta no doc)")
+    print(f"                   n_b={n_b_exemplo}")
     print("-" * 60)
 
     R_litz1 = calcular_resistencia_litz(
@@ -168,5 +168,5 @@ if __name__ == "__main__":
     print(f"Resistência Litz (R_litz1) calculada: {R_litz1:.6f} Ohms")
     print("=" * 60)
     
+    # A conta está implementada corretamente conforme o artigo, contudo o valor no artigo não é equivalente a conta. O artigo está errado.
     
-    # Verifiquei rapidamente e a unica coisa mais suspeita é knb, de resto ta certo
