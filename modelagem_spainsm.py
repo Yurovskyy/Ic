@@ -12,7 +12,8 @@ def calcular_resistencias(Parametros_fixos_projeto,individual,Constantes_fisicas
     
     # Diâmetro externo (m)
     dp = 2*np.sqrt((Parametros_fixos_projeto["A_p"]*Parametros_fixos_projeto["B_p"])/np.pi)       
-    d_sp = np.sqrt(individual.variables["S_p"])       # Diâmetro do fio Litz condutor (m)
+    S_p_m2 = individual.variables["S_p"] * 1e-6  # mm^2 para m^2
+    d_sp = np.sqrt(S_p_m2)       # Diâmetro do fio Litz condutor (m)
     N_p = individual.variables["N_p"]       # Número de espiras
     T_dp = Parametros_fixos_projeto["T_dp"] # Espaçamento entre espiras (m)
     d_0 = Parametros_fixos_projeto["d_0"]   # Diâmetro do strand
@@ -31,8 +32,30 @@ def calcular_resistencias(Parametros_fixos_projeto,individual,Constantes_fisicas
         n_b=Parametros_fixos_projeto["n_b"],
         rho=Constantes_fisicas["Rho_Cobre"]
     )
+    
+    ds = 2*np.sqrt((Parametros_fixos_projeto["A_s"]*Parametros_fixos_projeto["B_s"])/np.pi)       
+    S_s_m2 = individual.variables["S_s"] * 1e-6  # mm^2 para m^2
+    d_ss = np.sqrt(S_s_m2)       # Diâmetro do fio Litz condutor (m)
+    N_s = individual.variables["N_s"]       # Número de espiras
+    T_ds = Parametros_fixos_projeto["T_ds"] # Espaçamento entre espiras (m)
+    d_0 = Parametros_fixos_projeto["d_0"]   # Diâmetro do strand
+    n0 = d_ss/d_0 # Número de filamentos, strand, talvez ta errado
 
-    return R_p
+    d_is = calcular_diametro_interno(ds, d_ss, N_s, T_ds)
+
+    Ls = calcular_comprimento_fio(N_s, ds, d_is)
+
+    A_0 = calcular_area_strand(d_0)
+
+    R_s = calcular_resistencia_litz(
+        l=Ls,
+        A_str=A_0,
+        N_strands=n0,
+        n_b=Parametros_fixos_projeto["n_b"],
+        rho=Constantes_fisicas["Rho_Cobre"]
+    )
+
+    return R_p, R_s
 
 
 def calculate_inductances(Parametros_fixos_projeto,individual):
@@ -40,21 +63,31 @@ def calculate_inductances(Parametros_fixos_projeto,individual):
     Calcula as auto-indutâncias (Lp, Ls) e a indutância mútua (M).
     """
     
-    d_sp = math.sqrt(individual.variables["S_p"])
-    d_ss = math.sqrt(individual.variables["S_s"])
+    # S_p e S_s estão em mm^2, convertendo para m^2 antes de calcular o diâmetro
+    # Assumindo condutor quadrado: d = sqrt(S)
+    S_p_m2 = individual.variables["S_p"] * 1e-6  # mm^2 para m^2
+    S_s_m2 = individual.variables["S_s"] * 1e-6  # mm^2 para m^2
+    d_sp = math.sqrt(S_p_m2)  # Diâmetro/largura do condutor primário [m]
+    d_ss = math.sqrt(S_s_m2)  # Diâmetro/largura do condutor secundário [m]
+    
+    # Validação: garantir que N_p e N_s sejam pelo menos 2 (requisito da função)
+    N_p = max(2, int(round(individual.variables["N_p"])))
+    N_s = max(2, int(round(individual.variables["N_s"])))
     
     L_p = calculate_rectangular_spiral_inductance(Parametros_fixos_projeto["A_p"],Parametros_fixos_projeto["B_p"],
-                                                  Parametros_fixos_projeto["N_p"],d_sp,Parametros_fixos_projeto["T_dp"],d_sp)
+                                                  N_p,d_sp,Parametros_fixos_projeto["T_dp"],d_sp)
     L_s = calculate_rectangular_spiral_inductance(Parametros_fixos_projeto["A_s"],Parametros_fixos_projeto["B_s"],
-                                                  Parametros_fixos_projeto["N_s"],d_ss,Parametros_fixos_projeto["T_ds"],d_sp)
+                                                  N_s,d_ss,Parametros_fixos_projeto["T_ds"],d_ss)
     
     return L_p, L_s
 
-def calculate_mutual_inductance(Parametros_fixos_projeto):
+def calculate_mutual_inductance(Parametros_fixos_projeto,individual):
     
     R_p = math.sqrt((Parametros_fixos_projeto["A_p"]*Parametros_fixos_projeto["B_p"])/math.pi)
     R_s = math.sqrt((Parametros_fixos_projeto["A_s"]*Parametros_fixos_projeto["B_s"])/math.pi)
     
-    M = calcular_indutancia_mutua(R_p,R_s,Parametros_fixos_projeto["Distancia_bobinas"],Parametros_fixos_projeto["N_p"],Parametros_fixos_projeto["N_s"])
+    M = calcular_indutancia_mutua(R_p,R_s,Parametros_fixos_projeto["Distancia_bobinas"],
+                                  individual.variables["N_p"],
+                                  individual.variables["N_s"])
     
     return M

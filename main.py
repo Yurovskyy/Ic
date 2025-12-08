@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 # Importa as constantes e as funções de modelagem dos arquivos anteriores
 from config import Limites_variaveis, Restricoes, Parametros_algoritmo, Parametros_fixos_projeto
 from modelagem_spainsm import calculate_inductances, calculate_mutual_inductance
-from circuito.wpt_system import secant_method_for_frequency
+from circuito.spainsm import secant_method_for_frequency
 
 # --- Definição do Problema para Pymoo ---
 class WPTProblem(Problem):
@@ -63,8 +63,8 @@ class WPTProblem(Problem):
             # Etapa 2.1: Cálculo das indutâncias
             # Este objeto temporário facilita a passagem de parâmetros
             temp_individual = type('obj', (object,), {'variables': variables})()
-            temp_individual.L_p, temp_individual.L_s = calculate_inductances(temp_individual,Parametros_fixos_projeto["g"])
-            temp_individual.M = calculate_mutual_inductance(temp_individual,Parametros_fixos_projeto["Distancia_bobinas"])
+            temp_individual.L_p, temp_individual.L_s = calculate_inductances(Parametros_fixos_projeto,temp_individual,)
+            temp_individual.M = calculate_mutual_inductance(Parametros_fixos_projeto,temp_individual)
             
             # Etapa 2.2: Encontrar frequência de operação via método da secante
             frequency_hz, params = secant_method_for_frequency(temp_individual)
@@ -72,15 +72,25 @@ class WPTProblem(Problem):
             # Se o método não convergir, a solução é infactível e já está penalizada com 'np.inf'
             if frequency_hz is None or params is None:
                 continue
+            
+            # Verifica se há valores inválidos (NaN ou inf) nos parâmetros
+            if (np.isnan(frequency_hz) or np.isinf(frequency_hz) or
+                np.isnan(params['efficiency']) or np.isinf(params['efficiency']) or
+                np.isnan(params['power_out']) or np.isinf(params['power_out'])):
+                continue
                 
             # --- Etapa 2.3: Cálculo dos Objetivos e Restrições ---
             
             # (Eq. 24, 25) Cálculo dos volumes de cobre (Funções Objetivo)
-            # ? corrigir aki
+            # S_p e S_s estão em mm^2, len_p e len_s em m, então vol_cu está em mm^2 * m
             len_p = 2 * (Parametros_fixos_projeto['A_p'] + Parametros_fixos_projeto['B_p']) * variables['N_p']
             len_s = 2 * (Parametros_fixos_projeto['A_s'] + Parametros_fixos_projeto['B_s']) * variables['N_s']
             vol_cu_p = variables['S_p'] * len_p
             vol_cu_s = variables['S_s'] * len_s
+            
+            # Verifica se os volumes são válidos
+            if np.isnan(vol_cu_p) or np.isinf(vol_cu_p) or np.isnan(vol_cu_s) or np.isinf(vol_cu_s):
+                continue
             
             f[i, 0] = vol_cu_p
             f[i, 1] = vol_cu_s
@@ -98,18 +108,28 @@ class WPTProblem(Problem):
             g[i, 2] = Restricoes['efficiency_min'] - params['efficiency']
             
             # Restrição 4: Tensão Máx. no Capacitor Primário (VC_p - 3.5kV <= 0)
-            g[i, 3] = params['VC_p'] - (Restricoes['V_capacitor_max_kV'] * 1000.0)
+            # Usa abs() porque VC_p é um número complexo, precisamos da magnitude
+            g[i, 3] = abs(params['VC_p']) - (Restricoes['V_capacitor_max_kV'] * 1000.0)
             
             # Restrição 5: Tensão Máx. no Capacitor Secundário (VC_s - 3.5kV <= 0)
-            g[i, 4] = params['VC_s'] - (Restricoes['V_capacitor_max_kV'] * 1000.0)
+            # Usa abs() porque VC_s é um número complexo, precisamos da magnitude
+            g[i, 4] = abs(params['VC_s']) - (Restricoes['V_capacitor_max_kV'] * 1000.0)
             
             # Restrição 6: Densidade de Corrente Máx. no Primário (J_p - 4 <= 0)
-            current_density_p = params['I_p'] / variables['S_p']
-            g[i, 5] = current_density_p - Restricoes['current_density_max']
+            # Usa abs() porque I_p é um número complexo, precisamos da magnitude
+            if variables['S_p'] > 1e-9:  # Evita divisão por zero
+                current_density_p = abs(params['I_p']) / variables['S_p']
+                g[i, 5] = current_density_p - Restricoes['current_density_max']
+            else:
+                g[i, 5] = 1e6  # Penaliza seção muito pequena
             
             # Restrição 7: Densidade de Corrente Máx. no Secundário (J_s - 4 <= 0)
-            current_density_s = params['I_s'] / variables['S_s']
-            g[i, 6] = current_density_s - Restricoes['current_density_max']
+            # Usa abs() porque I_s é um número complexo, precisamos da magnitude
+            if variables['S_s'] > 1e-9:  # Evita divisão por zero
+                current_density_s = abs(params['I_s']) / variables['S_s']
+                g[i, 6] = current_density_s - Restricoes['current_density_max']
+            else:
+                g[i, 6] = 1e6  # Penaliza seção muito pequena
 
         # Define os resultados no dicionário de saída do Pymoo
         out["F"] = f

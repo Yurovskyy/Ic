@@ -73,7 +73,7 @@ def calculate_rectangular_spiral_inductance(a, b, n, d, g, h):
 
     if n < 2:
         # O número de espiras deve ser maior que 2
-        print("deu ruim 1")
+        print(f"ERRO 1: Número de espiras ({n}) deve ser >= 2. Parâmetros: a={a:.4f}m, b={b:.4f}m, d={d:.6f}m, g={g:.6f}m, h={h:.6f}m")
         return 1e-12
 
     # Parâmetros derivados
@@ -83,28 +83,30 @@ def calculate_rectangular_spiral_inductance(a, b, n, d, g, h):
 
     # Comprimentos médios dos condutores 
     # 'a' e 'b' são os comprimentos médios dos segmentos do condutor.
+    a_original = a
+    b_original = b
     a = a - (n - 1) * w  # Equação (3) modificada
     b = b - (n - 1) * w  # Equação (4)
 
     # --- Etapa 2: Verificação de Validade da Geometria ---
-    if (b - (n - 1) * w) <= 0:
-        print("deu ruim 2")
+    if b <= 0:
+        print(f"ERRO 2: Geometria inválida - lado b ajustado ({b:.6f}m) <= 0. Parâmetros originais: a={a_original:.4f}m, b={b_original:.4f}m, n={n}, w={w:.6f}m, d={d:.6f}m, g={g:.6f}m")
         return 1e-12
-    rho = ((n - 1) * w + d) / (b - (n - 1) * w)
+    rho = ((n - 1) * w + d) / b
     if n == 2 and rho > 0.36001: 
-        print("deu ruim 3")
+        print(f"ERRO 3: rho ({rho:.4f}) > 0.36001 para n=2. Parâmetros: a={a_original:.4f}m, b={b_original:.4f}m, n={n}, w={w:.6f}m, d={d:.6f}m")
         return 1e-12
     if 3 <= n <= 7 and rho > 0.52001: 
-        print("deu ruim 4")
+        print(f"ERRO 4: rho ({rho:.4f}) > 0.52001 para n={n}. Parâmetros: a={a_original:.4f}m, b={b_original:.4f}m, w={w:.6f}m, d={d:.6f}m")
         return 1e-12
     if 8 <= n <= 12 and rho > 0.78001: 
-        print("deu ruim 5")
+        print(f"ERRO 5: rho ({rho:.4f}) > 0.78001 para n={n}. Parâmetros: a={a_original:.4f}m, b={b_original:.4f}m, w={w:.6f}m, d={d:.6f}m")
         return 1e-12
     if 13 <= n <= 20 and rho > 0.86001: 
-        print("deu ruim 6")
+        print(f"ERRO 6: rho ({rho:.4f}) > 0.86001 para n={n}. Parâmetros: a={a_original:.4f}m, b={b_original:.4f}m, w={w:.6f}m, d={d:.6f}m")
         return 1e-12
     if n >= 21 and rho > (n - 1) / (n + 1): 
-        print("deu ruim 7")
+        print(f"ERRO 7: rho ({rho:.4f}) > {(n - 1) / (n + 1):.4f} para n={n}. Parâmetros: a={a_original:.4f}m, b={b_original:.4f}m, w={w:.6f}m, d={d:.6f}m")
         return 1e-12
     
     # --- 4.2. Expressões aproximadas para as autoindutâncias parciais ---

@@ -2,7 +2,8 @@ import math
 import os, sys
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from config import Parametros_fixos_projeto, Restricoes, Parametros_numericos
-from modelagem_spain import calculate_resistances
+from modelagem_spainsm import calcular_resistencias
+from config import Constantes_fisicas
 
 def calculate_system_parameters(individual, frequency_hz):
     """
@@ -16,7 +17,7 @@ def calculate_system_parameters(individual, frequency_hz):
     j = 1j
     
     # Calcula resistências para a frequência atual
-    R_p, R_s = calculate_resistances(individual, frequency_hz,Parametros_fixos_projeto["d_0"])
+    R_p, R_s = calcular_resistencias(Parametros_fixos_projeto,individual,Constantes_fisicas)
     # (Eq. 1) Calcula a resistência de carga equivalente RL
     R_L = (8 / math.pi**2) * (individual.variables['V_s']**2 / Parametros_fixos_projeto["P_d"])
     
