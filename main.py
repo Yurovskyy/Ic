@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 
 # Importa as constantes e as funções de modelagem dos arquivos anteriores
 from config import Limites_variaveis, Restricoes, Parametros_algoritmo, Parametros_fixos_projeto
-from modelagem import calculate_inductances, calculate_mutual_inductance
+from modelagem_spainsm import calculate_inductances, calculate_mutual_inductance
 from circuito.wpt_system import secant_method_for_frequency
 
 # --- Definição do Problema para Pymoo ---

@@ -1,15 +1,5 @@
-"""
-Script Python para calcular a resistência de um fio Litz com base nas equações
-apresentadas na dissertação "PROJETO DO ACOPLAMENTO INDUTIVO DE UM
-SISTEMA DE TRANSFERÊNCIA DE ENERGIA SEM FIO PARA A RECARGA DE VEÍCULOS ELÉTRICOS"
-por Pedro Gelati Pascoal (UFSM, 2023).
-
-O cálculo principal baseia-se na Equação 4.17 e suas equações de apoio
-do Capítulo 4.
-"""
-
 import math
-RHO_COBRE = 1.72e-8
+from config import Constantes_fisicas
 K_BW = 1.03
 
 # --- Funções auxiliares baseadas no documento ---
@@ -81,7 +71,7 @@ def calcular_resistencia_litz(
     A_str: float,
     N_strands: int,
     n_b: int,
-    rho: float = RHO_COBRE
+    rho: float = Constantes_fisicas["Rho_Cobre"]
 ) -> float:
     """
     Calcula a resistência máxima do fio Litz conforme a Equação 4.17.
@@ -123,6 +113,7 @@ if __name__ == "__main__":
     D_str_mm = 0.1016 # Diâmetro do strand (mm) (38 AWG) [cite: 138]
     D_str_m = D_str_mm / 1000.0 # Convertido para metros [cite: 275]
     N_strands1 = 900  # Número de strands [cite: 152]
+    # existe unm packing factor implicito aqui
 
     # --- Passo 1: Calcular Diâmetro Interno (Eq 4.12) ---
     D_i1 = calcular_diametro_interno(D_o1, w1, N1, s1)
@@ -150,7 +141,7 @@ if __name__ == "__main__":
     print("-" * 60)
     print(f"Cálculo da Resistência R_litz (Equação 4.17) [cite: 280]")
     print(f"Usando parâmetros: l={l1:.2f} m, A_str={A_str1:.4e} m^2")
-    print(f"                   N_strands={N_strands1}, rho={RHO_COBRE} Ohm.m")
+    print(f"                   N_strands={N_strands1}, rho={Constantes_fisicas["Rho_Cobre"]} Ohm.m")
     print(f"                   k_BW={K_BW} [cite: 281]")
     print(f"                   n_b={n_b_exemplo}")
     print("-" * 60)
@@ -160,7 +151,7 @@ if __name__ == "__main__":
         A_str=A_str1,
         N_strands=N_strands1,
         n_b=n_b_exemplo,
-        rho=RHO_COBRE
+        rho=Constantes_fisicas["Rho_Cobre"]
     )
 
     k_nb_calc = calcular_k_nb(n_b_exemplo)

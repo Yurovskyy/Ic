@@ -1,7 +1,3 @@
-"""
-Módulo para cálculos do circuito do sistema WPT.
-Referência: Seções 2 e 4 (Etapa 2.2) do artigo.
-"""
 import math
 import os, sys
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))

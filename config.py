@@ -30,12 +30,11 @@ Parametros_fixos_projeto = {
     "A_s" : 0.38, # Lado 'a' da bobina secundária [m]
     "B_s" : 0.38, # Lado 'b' da bobina secundária [m]
     "Distancia_bobinas" : 0.25, # A distância entre indutores (0.25m) é usada nos cálculos de indutância mútua.
-    "n_t": 280, # Número de filamentos (strad)
-    "d_0" : 0.0002, # Diametro do filamento(strand) [m]
+    "d_0" : 0.0001, # Diametro do filamento(strand) [mm]
     "T_dp" : 0.0015, # Gap, espaçamento entre condutores [m]
-    "t_DS" : 0.001,
-    "packing_factor": 0.5 # Paragrafo antes da seção 3
-    
+    "T_ds" : 0.0015, # Gap, espaçamento entre condutores [m]
+    "packing_factor": 0.5, # Paragrafo antes da seção 3
+    "n_b" : 3 # Parametro norma Santa Maria
 };
 
 # ===========================================================================
@@ -139,11 +138,16 @@ b_p = Parametros_fixos_projeto['B_p']   # Lado 'b' da bobina primária [m]
 a_s = Parametros_fixos_projeto['A_s'] # Lado 'a' da bobina secundária [m]
 b_s = Parametros_fixos_projeto['B_s'] # Lado 'b' da bobina secundária [m]
 d = None        # (d) Diâmetro [m]
+d_sp = None     # Diametro do condutor primario [m]
 r = None        # Raio [m]
+r_p = None      # Raio primário
+r_s = None      # Raio secundário
 d_0 = None      # (d0) Diâmetro do filamento (strand) [mm]
-g = None # gap, espaçamento entre condutores [m]
+g= None # gap, espaçamento entre condutores [m]
+T_d = None # gap tmb
 s = None # lagura do condutor
 z = None #altura/espessura do condutor
+L = None # comprimento fio
 
 vol_cu_p = None   # (Volcup) Volume de cobre no primário [m^3]
 vol_cu_s = None   # (Volcus) Volume de cobre no secundário [m^3]

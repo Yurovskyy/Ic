@@ -1,4 +1,3 @@
-# electromagnetic_modeling.py
 """
 Módulo para modelagem eletromagnética do sistema WPT.
 Referência: Seção 3 do artigo.

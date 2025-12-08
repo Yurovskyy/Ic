@@ -1,6 +1,7 @@
 import numpy as np
 import math
 import os, sys
+
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from config import Constantes_fisicas
 
@@ -50,7 +51,7 @@ def calculate_M_c(c, log_GMD, AMSD_sq, AMD):
     term4 = AMD / c
     return (Constantes_fisicas["Mu_0"] * c / (2 * np.pi)) * (term1 - term2 - term3 + term4)
 
-def calculate_rectangular_spiral_inductance(a, b, n, s, g, h):
+def calculate_rectangular_spiral_inductance(a, b, n, d, g, h):
     """
     Calcula a indutância de uma bobina espiral planar retangular.
 
@@ -58,7 +59,7 @@ def calculate_rectangular_spiral_inductance(a, b, n, s, g, h):
         a (float): Comprimento do lado externo mais longo [m].
         b (float): Comprimento do lado externo mais curto [m].
         n (int): Número de voltas ou enrolamentos.
-        s (float): Largura do condutor [m].
+        d (float): Largura/diametro do condutor [m].
         g (float): Espaçamento entre os condutores [m].
         h (float): Altura/espessura do condutor [m].
 
@@ -76,9 +77,9 @@ def calculate_rectangular_spiral_inductance(a, b, n, s, g, h):
         return 1e-12
 
     # Parâmetros derivados
-    w = s + g  # Passo do enrolamento (winding pitch) 
-    kappa = w / s
-    gamma = s / h
+    w = d + g  # Passo do enrolamento (winding pitch) 
+    kappa = w / d
+    gamma = d / h
 
     # Comprimentos médios dos condutores 
     # 'a' e 'b' são os comprimentos médios dos segmentos do condutor.
@@ -89,7 +90,7 @@ def calculate_rectangular_spiral_inductance(a, b, n, s, g, h):
     if (b - (n - 1) * w) <= 0:
         print("deu ruim 2")
         return 1e-12
-    rho = ((n - 1) * w + s) / (b - (n - 1) * w)
+    rho = ((n - 1) * w + d) / (b - (n - 1) * w)
     if n == 2 and rho > 0.36001: 
         print("deu ruim 3")
         return 1e-12
@@ -110,7 +111,7 @@ def calculate_rectangular_spiral_inductance(a, b, n, s, g, h):
 
     # Aproximações para GMD (Geometric Mean Distance)
     # log(GMD1) ~ log(s+h) - 3/2 --- Equação (18) 
-    log_GMD1 = np.log(s + h) - 1.5
+    log_GMD1 = np.log(d + h) - 1.5
 
     # log(GMD2) ~ log(s+h) + log(k/2) - ... --- Equação (20) 
     # Usando kappa (κ) no lugar de k para evitar conflito com o índice do somatório
@@ -118,17 +119,17 @@ def calculate_rectangular_spiral_inductance(a, b, n, s, g, h):
 
     # Aproximações para AMSD (Arithmetic Mean Square Distance)
     # AMSD1^2 = (s^2 + h^2)/6 --- Equação (43) 
-    AMSD1_sq = (s**2 + h**2) / 6.0
+    AMSD1_sq = (d**2 + h**2) / 6.0
 
     # Aproximações para AMD (Arithmetic Mean Distance)
     # AMD1 ~ GMD1 ~ 0.2235(s+h) --- Equações (22) e (17) 
-    AMD1 = 0.2235 * (s + h)
+    AMD1 = 0.2235 * (d + h)
 
     # --- Cálculo das distâncias médias compostas para Autoindutância (L_a, L_b) ---
     k_vals = np.arange(1, n) # k vai de 1 a N-1
 
     # log(GMD_L) --- Equação (12) 
-    sum_log_GMD2 = np.sum((n - k_vals) * np.array([log_GMD2_func(k, w, s, h, correction) for k in k_vals]))
+    sum_log_GMD2 = np.sum((n - k_vals) * np.array([log_GMD2_func(k, w, d, h, correction) for k in k_vals]))
     log_GMD_L = (1 / n**2) * (n * log_GMD1 + 2 * sum_log_GMD2)
 
     # AMSD_L^2 --- Equação (14) 
@@ -136,7 +137,7 @@ def calculate_rectangular_spiral_inductance(a, b, n, s, g, h):
     AMSD_L_sq = (1 / n**2) * (n * AMSD1_sq + 2 * sum_AMSD2_sq)
 
     # AMD_L --- Equação (16) 
-    sum_AMD2 = np.sum((n - k_vals) * np.array([AMD2_func(k, w, s, h, correction) for k in k_vals]))
+    sum_AMD2 = np.sum((n - k_vals) * np.array([AMD2_func(k, w, d, h, correction) for k in k_vals]))
     AMD_L = (1 / n**2) * (n * AMD1 + 2 * sum_AMD2)
 
     # --- Cálculo das Autoindutâncias Parciais L_a e L_b ---
@@ -158,38 +159,6 @@ def calculate_rectangular_spiral_inductance(a, b, n, s, g, h):
     L_total = 2 * (n**2) * (L_a + L_b - (M_a + M_b))
 
     return L_total
-
-def calculate_ipt_coil_inductance_approx(S,N,A,B,g):
-    """
-    Calcula a indutância aproximada de uma bobina circular para IPT,
-    mapeando sua geometria para uma bobina quadrada equivalente.
-
-    Args:
-        S (float): Seção do condutor [mm^2]. (?)
-        N (int): Número de espiras. (?)
-        A (float): Comprimento do lado externo mais longo [m].
-        B (float): Comprimento do lado externo mais curto [m].
-        g (float): Espaçamento entre os fios (gap) [m].
-
-    Returns:
-        L float: A indutância aproximada [H].
-    """
-    d = 2 * np.sqrt((A*B)/(np.pi))
-
-    # 2. Fazer as aproximações de geometria
-    # Bobina circular -> quadrada
-    A = d
-    B = d
-
-    # Fio circular -> quadrado com mesma área
-    d_condutor = np.sqrt(S)
-    s = d_condutor                # Largura do condutor
-    h = s                         # Altura do condutor
-    
-    # 3. Chamar a função principal com os parâmetros aproximados
-    L = calculate_rectangular_spiral_inductance(A, B, N, s, g, h)
-
-    return L
 
 # --- Exemplo de Uso ---
 if __name__ == '__main__':
@@ -304,7 +273,7 @@ if __name__ == '__main__':
     print(f"  - Altura do condutor equivalente (h): {h * 1e3:.4f} mm")
     print(f"  - Espaçamento entre condutores (g): {g * 1e3:.4f} mm\n")
 
-    L_calculada_H = calculate_rectangular_spiral_inductance(a=A, b=B, n=N, s=s, g=g, h=h)
+    L_calculada_H = calculate_rectangular_spiral_inductance(a=A, b=B, n=N, d=s, g=g, h=h)
     L_calculada_uH = L_calculada_H * 1e6
     L_artigo_uH = 112.67
 
